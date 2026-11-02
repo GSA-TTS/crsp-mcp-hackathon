@@ -11,11 +11,7 @@ related_files: ["../README.md", "../PROJECT_PLAN.md", "IMPLEMENTATION_PIPELINE.m
 
 Normative requirements below describe the intended implementation. WP-01 configuration, WP-02 gateway proof, and WP-03 evidence foundations are implemented locally and awaiting human review. External integrations remain pending. Work-package identifiers refer to the [implementation ledger](IMPLEMENTATION_PIPELINE.md); current boundaries are in [development instructions](DEVELOPMENT.md).
 
-## 1. Proposed architecture decision: modular gateway
-
-**Decision ID:** AD-001. **Status:** proposed. **Date:** 2026-10-30.
-**Decision maker:** project owner, acceptance pending. **Category:** deployment and infrastructure.
-Suggested control mappings: AC-6, AU-3, CM-3, SA-11, SI-10. Deployment impact level and ATO relevance are undetermined; this document makes no authorization claim.
+## 1. Modular gateway architecture
 
 ### Context and drivers
 
@@ -30,8 +26,6 @@ The analyst needs multiple regulatory and economic sources in one workflow, whil
 ### Proposed outcome and consequences
 
 Prefer option 2, with conventional child tools and CodeMode at the gateway. Keep conventional gateway access for comparison. This introduces a dependency on compatible mounting and CodeMode behavior; WP-02 must prove that behavior before acceptance. Namespace collision detection and lifecycle behavior need explicit tests. Remote deployment is outside the initial design.
-
-The formal proposed record is [AD-001](adr/0001-local-fastmcp-gateway.md), including owner review and unresolved deployment metadata.
 
 ```text
 Agent + analysis skills

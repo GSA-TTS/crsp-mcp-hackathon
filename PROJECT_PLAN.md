@@ -21,7 +21,7 @@ The initial product is a local, read-only research and analysis suite. Proposed 
 
 Project: Regulatory Analysis MCP Suite (`regulatory-mcp`). Initial stack: Python 3.14, FastMCP 4.1.4, pydantic-settings 2.16.2, Hatchling packaging, and uv locking. Storage is planned as project-local artifacts; no database is selected. Hosting is local stdio. CI configuration is not part of the foundation authorization.
 
-Compliance/data scope: the owner authorized a local public-source prototype on 2026-10-30. FIPS impact level and ATO relevance remain undetermined. Public-source inputs can contain personal information. See [development instructions](docs/DEVELOPMENT.md) for the implemented foundation and [AD-001](docs/adr/0001-local-fastmcp-gateway.md) for the proposed architecture.
+Compliance/data scope: the owner authorized a local public-source prototype on 2026-10-30. FIPS impact level and ATO relevance remain undetermined. Public-source inputs can contain personal information. See [development instructions](docs/DEVELOPMENT.md) for the implemented foundation and the [technical specification](docs/SPECIFICATION.md) for the architecture.
 
 Use modular FastMCP child servers mounted into one namespaced gateway. Apply CodeMode at the gateway for discovery and bounded tool orchestration. Keep conventional tool access available for evaluation and individual children independently usable.
 

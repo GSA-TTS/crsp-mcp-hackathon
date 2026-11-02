@@ -21,7 +21,7 @@ The [specification](SPECIFICATION.md) defines acceptance criteria AC-01 through 
 
 | ID | Task | Status | Depends on / unblocking trigger | Acceptance |
 |---|---|---|---|---|
-| WP-01 | Project foundation and architectural record | in_review | Local checks pass; human review pending | Setup and verification entry points |
+| WP-01 | Project foundation | in_review | Local checks pass; human review pending | Setup and verification entry points |
 | WP-02 | FastMCP gateway proof | in_review | Runtime tests pass; human review pending | AC-01 |
 | WP-03 | Evidence and result contracts | in_review | Persistence/reference tests pass; human review pending | AC-02 |
 | WP-04 | Regulations.gov read adapter | blocked | WP-03 and verified OpenAPI/access | AC-03 |
@@ -34,31 +34,31 @@ The [specification](SPECIFICATION.md) defines acceptance criteria AC-01 through 
 | WP-11 | Analysis skills and report bundle | blocked | WP-02, WP-06, WP-07 | AC-08 |
 | WP-12 | Independent review and live demonstration | blocked | WP-11 and applicable source packages pass | AC-09 |
 
-## WP-01 — Project foundation and architectural record
+## WP-01 — Project foundation
 
 **Owner:** OpenCode AI agent (implementation), project owner (review pending). **Status:** in_review.
 
-Implemented: Python 3.14/FastMCP 4.1.4 package, exact direct dependencies and `uv.lock`, validated settings, `make setup`, `make check`, project instructions, development documentation, and proposed AD-001. Local verification passed; see [WP-01 transcript](verification/WP-01.md). Gateway execution and source access are subsequent packages, not foundation claims.
+Implemented: Python 3.14/FastMCP 4.1.4 package, exact direct dependencies and `uv.lock`, validated settings, `make setup`, `make check`, project instructions, and development documentation. Gateway execution and source access are subsequent packages, not foundation claims.
 
-Scope: package metadata and lockfile, local developer commands, project instructions, decision records, and corresponding README updates. Select exact dependency versions only after compatibility, license, and vulnerability checks. Dependency installation and any CI changes require their own authorized scope.
+Scope: package metadata and lockfile, local developer commands, project instructions, and corresponding README updates. Select exact dependency versions only after compatibility, license, and vulnerability checks. Dependency installation and any CI changes require their own authorized scope.
 
-Deliver a one-command bootstrap and one-command verification workflow, with offline versus credentialed checks clearly described. Set package layout, supported Python/runtime versions, test tooling, validated configuration names/defaults, and artifact retention location. Formalize proposed AD-001 from the specification as an owner-reviewed decision record; retain unknown deployment/authorization metadata as unresolved rather than inventing it.
+Deliver a one-command bootstrap and one-command verification workflow, with offline versus credentialed checks clearly described. Set package layout, supported Python/runtime versions, test tooling, validated configuration names/defaults, and artifact retention location.
 
 Gate: a clean environment can follow documented setup; verification invokes the agreed lint, tests, type/build checks, and relevant security scans. Record actual command output. This unblocks WP-02 and WP-03.
 
 ## WP-02 — Gateway proof
 
-**Owner:** OpenCode AI agent; human review pending. **Status:** in_review. Implemented mounted gateway, bounded Monty execution, catalog discovery, and stdio entry point. See [verification](verification/WP-02-WP-03.md).
+**Owner:** OpenCode AI agent; human review pending. **Status:** in_review. Implemented mounted gateway, bounded Monty execution, catalog discovery, and stdio entry point.
 
 Proposed scope: `src/regulatory_mcp/gateway/`, `tests/gateway/`.
 
 Build two minimal conventional child tools, mount them under namespaces, and prove discovery plus data transfer between calls in a single CodeMode execution. Check actual exposed tool names, startup collision failure, bounded execution, child lifecycle, and conventional-mode equivalence. Inspect and document CodeMode execution permissions and isolation.
 
-Gate: AC-01 passes using the real pinned FastMCP runtime. Stubs may supply child data, but cannot replace the gateway/runtime being tested. If composition fails, record the observed incompatibility and return AD-001 for review before expanding adapters.
+Gate: AC-01 passes using the real pinned FastMCP runtime. Stubs may supply child data, but cannot replace the gateway/runtime being tested. If composition fails, record the observed incompatibility and review the gateway design before expanding adapters.
 
 ## WP-03 — Evidence and result contracts
 
-**Owner:** OpenCode AI agent; human review pending. **Status:** in_review. Implemented schema-v1 contracts, immutable records, content-addressed bytes, reviewed-reference enforcement, and read-only tools. See [verification](verification/WP-02-WP-03.md).
+**Owner:** OpenCode AI agent; human review pending. **Status:** in_review. Implemented schema-v1 contracts, immutable records, content-addressed bytes, reviewed-reference enforcement, and read-only tools.
 
 Proposed scope: `src/regulatory_mcp/contracts/`, `src/regulatory_mcp/evidence/`, matching tests.
 
@@ -70,7 +70,7 @@ Gate: AC-02 tests show that changing bytes creates a new version, inputs remain 
 
 **Owner:** unassigned. **Status:** blocked on WP-03 and source access.
 
-Implementation update: OpenCode AI agent implemented the six read tools and offline contract tests. **Acceptance remains blocked** on configured credentials, live response verification, and authoritative GET limits. Remaining bounded scope: normalize source results to shared response envelopes and implement/test timestamp-window continuation with overlap/progress handling if exhaustive retrieval is required. These are tracked WP-04 subitems; trigger is verified live paging behavior and owner-approved bulk scope. Current tools explicitly return one page. See [source verification](verification/WP-04-WP-05.md).
+Implementation update: OpenCode AI agent implemented the six read tools and offline contract tests. **Acceptance remains blocked** on configured credentials, live response verification, and authoritative GET limits. Remaining bounded scope: normalize source results to shared response envelopes and implement/test timestamp-window continuation with overlap/progress handling if exhaustive retrieval is required. These are tracked WP-04 subitems; trigger is verified live paging behavior and owner-approved bulk scope. Current tools explicitly return one page.
 
 Proposed scope: `src/regulatory_mcp/sources/regulations/`, `tests/sources/regulations/`, sanitized fixtures.
 
@@ -82,7 +82,7 @@ Gate: AC-03 passes offline contract/error tests and authorized live read checks.
 
 **Owner:** unassigned. **Status:** blocked on WP-03 and recovered public URLs/schemas.
 
-Implementation update: OpenCode AI agent recovered source contracts and implemented OIRA pending/completed, agenda-202510, and pending-PRA snapshot tools. **Acceptance remains blocked** because this environment resolves the public host to a nonpublic address. Resume live validation with approved public DNS/egress. Shared-envelope normalization is tracked here before final acceptance. Other public report types remain unsupported until their contracts are verified. See [source verification](verification/WP-04-WP-05.md).
+Implementation update: OpenCode AI agent recovered source contracts and implemented OIRA pending/completed, agenda-202510, and pending-PRA snapshot tools. **Acceptance remains blocked** because this environment resolves the public host to a nonpublic address. Resume live validation with approved public DNS/egress. Shared-envelope normalization is tracked here before final acceptance. Other public report types remain unsupported until their contracts are verified.
 
 Proposed scope: `src/regulatory_mcp/sources/reginfo/`, matching tests and public snapshot fixtures.
 
@@ -104,7 +104,7 @@ Gate: AC-04 passes; FDA inputs have reviewed transcription and persistent eviden
 
 **Owner:** unassigned. **Status:** blocked on WP-03; FDA integration also needs WP-06.
 
-Implementation update: OpenCode AI agent implemented six deterministic tools, typed bounded requests, decimal arithmetic, evidence-linked manifests, and both-mode gateway integration. Independent numerical tests and handoff-derived FDA cases pass. **Source-grounded acceptance remains blocked on WP-06**, and human interpretation review is pending. See [tool usage](ANALYSIS.md) and [verification](verification/WP-07.md). The source-access recheck still finds no API key and nonpublic DNS for both source hosts.
+Implementation update: OpenCode AI agent implemented six deterministic tools, typed bounded requests, decimal arithmetic, evidence-linked manifests, and both-mode gateway integration. Independent numerical tests and handoff-derived FDA cases pass. **Source-grounded acceptance remains blocked on WP-06**, and human interpretation review is pending. See [tool usage](ANALYSIS.md). The source-access recheck still finds no API key and nonpublic DNS for both source hosts.
 
 Proposed scope: `src/regulatory_mcp/analysis/deterministic/`, matching tests and FDA expected-result fixtures.
 
@@ -128,7 +128,7 @@ SUSB source update (user-supplied page): [2022 SUSB Annual Datasets by Establish
 
 Documentation follow-up: supplied BLS v2 signatures resolve GET IDs/envelopes/default-window and discovery contracts. Implemented corrected ID handling, list/object Results parsing, latest selection, popular-series and survey tools. Registered historical/multi-series POST support remains a distinct WP-09 subitem; implement bounded JSON queries and registration-key handling using the supplied contract, then verify quotas and live access. Supplied Census API inventory lists CBP but not SUSB; SUSB delivery/data dictionaries still require documentation. See [source contract notes](SOURCES.md).
 
-Prototype update: Census catalog/variable discovery, bounded table retrieval/inspection, and BLS single-series retrieval are implemented and fixture-tested. **Acceptance remains blocked** on official source documentation and live access. Owner documentation was requested. SUSB distribution/vintages, BLS metadata/history support, SBA definitions, and FDA-specific series selection remain tracked subitems; resume when their contracts/original RIA are available. See [verification](verification/WP-09.md).
+Prototype update: Census catalog/variable discovery, bounded table retrieval/inspection, and BLS single-series retrieval are implemented and fixture-tested. **Acceptance remains blocked** on official source documentation and live access. Owner documentation was requested. SUSB distribution/vintages, BLS metadata/history support, SBA definitions, and FDA-specific series selection remain tracked subitems; resume when their contracts/original RIA are available.
 
 **Owner:** unassigned. **Status:** blocked on WP-03 and source requirements from WP-06.
 

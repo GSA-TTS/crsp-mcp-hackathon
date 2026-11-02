@@ -4,7 +4,7 @@ description: "Calculation request formats, units, timing, and evidence-linked ru
 status: draft
 tier: 2
 last_updated: "2026-10-30"
-related_files: ["DEVELOPMENT.md", "IMPLEMENTATION_PIPELINE.md", "verification/WP-07.md"]
+related_files: ["DEVELOPMENT.md", "IMPLEMENTATION_PIPELINE.md"]
 ---
 
 # Deterministic analysis

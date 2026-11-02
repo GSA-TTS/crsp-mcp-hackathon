@@ -36,7 +36,7 @@ make setup
 make check
 ```
 
-Setup installs into `.venv`; verification includes an online dependency audit. Use `make check-offline` for local checks after setup. See [development instructions](docs/DEVELOPMENT.md) for configuration and check details, and [AD-001](docs/adr/0001-local-fastmcp-gateway.md) for the proposed architecture. WP-02 and WP-03 are implemented and awaiting review; the next source packages are **WP-04** (Regulations.gov) and **WP-05** (Reginfo).
+Setup installs into `.venv`; verification includes an online dependency audit. Use `make check-offline` for local checks after setup. See [development instructions](docs/DEVELOPMENT.md) for configuration and check details, and the [technical specification](docs/SPECIFICATION.md) for the architecture. WP-02 and WP-03 are implemented and awaiting review; the next source packages are **WP-04** (Regulations.gov) and **WP-05** (Reginfo).
 
 Launch the stdio server with `uv run --locked python -m regulatory_mcp`. Set `REGULATORY_MCP_GATEWAY_MODE=codemode` to enable CodeMode. Tools expose source reads and inspection of retained artifacts, evidence, and calculation manifests. Set `REGULATIONS_GOV_API_KEY` to enable Regulations.gov requests.
 

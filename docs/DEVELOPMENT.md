@@ -4,7 +4,7 @@ description: "Bootstrap, verification, dependency decisions, and environment con
 status: draft
 tier: 2
 last_updated: "2026-10-30"
-related_files: ["../README.md", "IMPLEMENTATION_PIPELINE.md", "adr/0001-local-fastmcp-gateway.md"]
+related_files: ["../README.md", "IMPLEMENTATION_PIPELINE.md", "SPECIFICATION.md"]
 ---
 
 # Local development
@@ -31,7 +31,6 @@ After setup, `make check-offline` runs all local checks without the dependency a
 - `src/regulatory_mcp/config.py`: validated process-environment settings.
 - `tests/`: configuration boundaries and documentation integrity.
 - `scripts/check_secrets.py`: turns secret findings into a failing check, including new files.
-- `docs/adr/`: architectural decisions.
 - `artifacts/`: ignored, project-local source/derived evidence storage, to be implemented in WP-03.
 
 ## Running the gateway

@@ -4,7 +4,7 @@ description: "Implemented read tools, verified source contracts, and live accept
 status: draft
 tier: 2
 last_updated: "2026-10-30"
-related_files: ["DEVELOPMENT.md", "IMPLEMENTATION_PIPELINE.md", "verification/WP-04-WP-05.md"]
+related_files: ["DEVELOPMENT.md", "IMPLEMENTATION_PIPELINE.md"]
 ---
 
 # Public source adapters
@@ -61,7 +61,7 @@ These tools are registered; live verification remains **blocked**. The owner sup
 
 The supplied BLS documentation establishes registered POST queries for up to 50 series and time frames up to 20 years, with optional catalog/calculations/annualaverage/aspects. Query transport and environment-supplied registration-key support are tracked in WP-09. Future keys must be sent in the JSON body, not copied into query URLs or retained request metadata. Daily/rate quotas are not established by the supplied signature page.
 
-No Census/BLS key is sent. If registration is needed, requests fail explicitly; credential support requires verified documentation. See [WP-09 verification](verification/WP-09.md). The fixed transport origins now also include `api.census.gov` and `api.bls.gov`, subject to the same destination checks.
+No Census/BLS key is sent. If registration is needed, requests fail explicitly; credential support requires verified documentation. Remaining work is tracked in [WP-09](IMPLEMENTATION_PIPELINE.md). The fixed transport origins now also include `api.census.gov` and `api.bls.gov`, subject to the same destination checks.
 
 Only fixed public origins are reachable through the source transport, also constrained by configured allowed hosts. HTTPS uses certificate verification and TLS 1.2 minimum, environment proxies are not automatically used, and all redirects fail. Time, decoded bytes, retries, and attempt spacing are bounded. Authentication/schema failures are not retried; selected transient failures use bounded backoff and Retry-After guidance. Gateway execution deadlines bound the overall operation.
 
