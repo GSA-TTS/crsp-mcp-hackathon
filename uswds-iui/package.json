@@ -1,0 +1,21 @@
+{
+  "name": "inline-micro-form",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test",
+    "check": "node --check server.js && node --check server.test.js && npm test && npm audit --omit=dev"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/client": "2.4.0",
+    "@modelcontextprotocol/ext-apps": "2.0.4",
+    "@modelcontextprotocol/server": "2.4.0",
+    "@uswds/uswds": "3.14.0",
+    "zod": "4.6.7"
+  }
+}

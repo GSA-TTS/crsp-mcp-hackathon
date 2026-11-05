@@ -3,7 +3,7 @@ title: "Regulatory Analysis MCP Implementation Pipeline"
 description: "Durable work ledger, dependencies, agent handoffs, and verification gates."
 status: draft
 tier: 2
-last_updated: "2026-10-30"
+last_updated: "2026-11-02"
 related_files: ["../README.md", "../PROJECT_PLAN.md", "SPECIFICATION.md"]
 ---
 
@@ -33,6 +33,7 @@ The [specification](SPECIFICATION.md) defines acceptance criteria AC-01 through 
 | WP-10 | Research and reference resolution | blocked | WP-03, WP-06 identify relevant references | AC-02, AC-06 |
 | WP-11 | Analysis skills and report bundle | blocked | WP-02, WP-06, WP-07 | AC-08 |
 | WP-12 | Independent review and live demonstration | blocked | WP-11 and applicable source packages pass | AC-09 |
+| WP-13 | Standalone USWDS MCP Apps prototype | in_review | Prototype checks pass; human review pending | Isolated Node package is documented and does not alter Python gateway behavior |
 
 ## WP-01 — Project foundation
 
@@ -167,6 +168,14 @@ Proposed scope: integration/evaluation tests, verification transcripts, and revi
 Use a review session separate from the implementation session. Review source authenticity, gateway registration, error paths, download boundaries, evidence integrity, mathematical conventions, and completeness claims. Run the live FDA source-to-report workflow and capture actual outputs. Compare CodeMode and conventional mode on the same task using correctness, tool/request counts, elapsed time, and returned data volume; record variability rather than claim a performance improvement from one run.
 
 Gate: AC-09 passes and the human reviewer accepts the economic interpretation. Credentials or unavailable sources yield `BLOCKED`, not a mocked live pass. File reproducible defects in the tracker, fix them, and rerun affected checks. Revisit downstream tasks when their blocking dependency completes.
+
+## WP-13 — Standalone USWDS MCP Apps prototype
+
+**Owner:** OpenCode AI agent (implementation), project owner (review pending). **Status:** in_review.
+
+Scope: `uswds-iui/`, plus the root README and this ledger entry for discoverability. This is a separate Node.js MCP Apps experiment, not a Python gateway feature: it is not imported, mounted, or required by the regulatory MCP runtime. Keep its dependencies, scripts, tests, and documentation inside `uswds-iui/`; do not register it as a Python source or gateway tool. `node_modules/`, local metadata, and logs are excluded from version control.
+
+Gate: run `cd uswds-iui && npm run check`; review the staged PR diff to confirm only the standalone package and its explicit documentation are included. Live rendering in a supported MCP host remains a separately documented manual check and must not be claimed from automated tests.
 
 ## Agent roles and handoff
 

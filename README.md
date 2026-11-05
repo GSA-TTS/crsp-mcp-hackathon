@@ -3,8 +3,8 @@ title: "Regulatory Analysis MCP Suite"
 description: "Evidence-linked regulatory research and reproducible economic analysis."
 status: draft
 tier: 1
-last_updated: "2026-10-30"
-related_files: ["PROJECT_PLAN.md", "docs/SPECIFICATION.md", "docs/IMPLEMENTATION_PIPELINE.md"]
+last_updated: "2026-11-02"
+related_files: ["PROJECT_PLAN.md", "docs/SPECIFICATION.md", "docs/IMPLEMENTATION_PIPELINE.md", "uswds-iui/README.md"]
 ---
 
 # Regulatory Analysis MCP Suite
@@ -41,3 +41,7 @@ Setup installs into `.venv`; verification includes an online dependency audit. U
 Launch the stdio server with `uv run --locked python -m regulatory_mcp`. Set `REGULATORY_MCP_GATEWAY_MODE=codemode` to enable CodeMode. Tools expose source reads and inspection of retained artifacts, evidence, and calculation manifests. Set `REGULATIONS_GOV_API_KEY` to enable Regulations.gov requests.
 
 Implementation and documents were prepared with AI assistance and remain subject to project-owner review.
+
+## Separate UI experiment
+
+[`uswds-iui/`](uswds-iui/README.md) is an independent Node.js MCP Apps prototype for inline USWDS-styled UI rendering. It has its own pinned dependencies and checks; it is not mounted in, imported by, or required by the Python regulatory MCP gateway. Run its checks separately with `cd uswds-iui && npm run check`.
