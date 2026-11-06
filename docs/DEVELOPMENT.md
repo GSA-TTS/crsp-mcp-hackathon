@@ -79,7 +79,7 @@ Process environment is used directly; `.env` files are not automatically loaded.
 | `CENSUS_API_KEY` | unset | Secret string; required for authenticated Census table queries |
 | `REGULATORY_MCP_ARTIFACT_DIR` | `artifacts` | Relative directory; absolute paths, `..`, and project root rejected |
 | `REGULATORY_MCP_GATEWAY_MODE` | `conventional` | `conventional` or `codemode` |
-| `REGULATORY_MCP_ALLOWED_HOSTS` | `["api.regulations.gov","www.reginfo.gov","api.census.gov","api.bls.gov"]` | JSON array of explicit lowercase DNS names; `[]` disables all destinations |
+| `REGULATORY_MCP_ALLOWED_HOSTS` | `["api.regulations.gov","downloads.regulations.gov","www.federalregister.gov","www.reginfo.gov","api.census.gov","api.bls.gov"]` | JSON array of explicit lowercase DNS names; `[]` disables all destinations |
 | `REGULATORY_MCP_HTTPS_PROXY` | unset | Optional explicit `http://` or `https://` proxy origin; treated as a masked secret because it may contain credentials |
 | `REGULATORY_MCP_SOURCE_REQUEST_INTERVAL_SECONDS` | `4` | Finite seconds between attempts, 0.1–60; local pacing, not a verified source quota |
 | `REGULATORY_MCP_REQUEST_TIMEOUT_SECONDS` | `30` | Finite number, greater than 0, at most 300 |

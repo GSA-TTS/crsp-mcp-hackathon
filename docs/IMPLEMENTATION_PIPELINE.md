@@ -20,7 +20,7 @@ demonstration and owner assistance requests. AI implementation mode: scoped edit
 | Phase | Existing package | Status / trigger | Deliverable and owner assistance |
 |---|---|---|---|
 | 1 | WP-06 | in_review; local implementation verified, FDA review pending | PDF/CSV ingestion, page/table inspection, cited selections, immutable review; owner confirms FDA Table 11 extraction. |
-| 2 | WP-04, WP-05, WP-06 | blocked on Phase 1 demonstration and source contracts | Rule/docket/version and attachment collection; owner supplies inaccessible original links and confirms anchor version. |
+| 2 | WP-04, WP-05, WP-06 | in_progress; Regulations.gov slice implemented, Federal Register contract blocked | Rule/docket/version and attachment collection; owner supplies inaccessible original links and confirms anchor version. |
 | 3 | WP-07, WP-08 | blocked on Phase 1 evidence and Phase 2 supporting models | Claim/assumption structure and model reconstruction; owner supplies underlying workbooks and resolves ambiguous timing. |
 | 4 | WP-08 | blocked on Phase 3 model | Multi-parameter sensitivity and threshold solving; owner selects defensible ranges and alternatives. |
 | 5 | WP-09, WP-10 | blocked on Phase 3 input inventory | Historical economic data and research corroboration; owner assists with keys, dictionaries, vintages and accessible papers. |
@@ -57,6 +57,32 @@ which rounds to FDA's 429 million. Saved run
 `75a5b2d4-93ea-45f1-b3b1-f70a47bfa3df` was retrieved and its reviewed evidence
 reference confirmed. This passes the single-cell reviewed-evidence demonstration;
 the other five Table 11 inputs and hosted deployment remain pending.
+
+Phase 1 published as draft PR #8 on 2026-11-06; signed commit `ac20f03`.
+Phase 2 is developed on stacked branch `feat/rule-document-collection`.
+Owner agreed to retrieve/upload Federal Register JSON on the Mac after direct
+documentation and record requests returned network-policy 403. Candidate record:
+`2016-11867`; identity and schema are not yet verified. Phase 2 tracked subitems:
+
+- **P2-01 (in_review):** bounded Regulations.gov collection manifests and
+  metadata-selected PDF/CSV retrieval into Phase 1 evidence. See
+  [rule collection](RULE_COLLECTION.md) and ADR-0004.
+- **P2-02a (in_review):** Federal Register detail/import/embedded-list tools, based
+  on owner-supplied 2016-11867 response. Preserves origin, original metadata,
+  reported counts and historical lookup dates. Independent live GET is still blocked.
+- **P2-02b (in_review):** owner supplied keyword search JSON: 20 matches, four pages,
+  five returned records with `next_page_url`. Implemented bounded search and
+  search → detail tests in both gateway modes, explicit keyword-match warnings,
+  retained original responses, and locally reconstructed continuation. Independent
+  live server access remains blocked; fixtures are labeled owner-derived reductions.
+- **P2-03 (in_progress):** detail tools preserve source-reported RIN/docket/CFR and
+  correction links; automatic proposed/final/version resolution remains blocked on
+  P2-02b. Owner response identifies anchor 2016-11867, final rule dated 2016-05-27,
+  81 FR 33742, RIN 0910-AF22 and docket FDA-2012-N-1210. The original compliance
+  dates are historical and must not be presented as current requirements.
+- **P2-04 (blocked on deployment/access):** actual FDA supporting-file retrieval and
+  collection completeness report through hosted tools. Current live evidence is
+  metadata only for `FDA-2012-N-1210-0549`, not final-RIA identity verification.
 
 This file is the initial repository-local change-tracking record. Each WP entry is a distinct tracked item, including dependency-blocked work. Maintain status, owner, blocking dependency, and acceptance evidence here until external issues are created; then add issue links without losing the task identifiers.
 

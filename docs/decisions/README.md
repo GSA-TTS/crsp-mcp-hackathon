@@ -14,3 +14,4 @@ related_files: ["0001-use-an-explicit-egress-proxy-for-public-sources.md", "../S
 | 0001 | [Use an explicit egress proxy for public sources](0001-use-an-explicit-egress-proxy-for-public-sources.md) | proposed | 2026-11-05 | AC-4, CM-7, SC-7, SC-8, SI-10 |
 | 0002 | [Host Regulatory MCP on cloud.gov](0002-host-regulatory-mcp-on-cloudgov.md) | proposed | 2026-11-05 | AC-3, SC-7, SC-8, SC-28, CM-3 |
 | 0003 | [Ingest PDF and CSV evidence](0003-ingest-pdf-csv-evidence.md) | proposed | 2026-11-06 | SI-10, SA-11, AU-3 |
+| 0004 | [Collect Regulations.gov documents](0004-collect-regulations-documents.md) | proposed | 2026-11-06 | SC-7, SI-10, AU-3 |
