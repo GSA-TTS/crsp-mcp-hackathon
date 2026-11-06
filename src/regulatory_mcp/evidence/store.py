@@ -10,7 +10,7 @@ from uuid import UUID
 from pydantic import BaseModel
 
 from regulatory_mcp.config import Settings
-from regulatory_mcp.contracts import Artifact, CalculationRun, Evidence
+from regulatory_mcp.contracts import Artifact, CalculationRun, EconomicModel, Evidence
 from regulatory_mcp.evidence.backend import ByteStore
 from regulatory_mcp.evidence.backend import StoreError as StoreError
 from regulatory_mcp.evidence.local import LocalByteStore
@@ -99,6 +99,26 @@ class EvidenceStore:
             for reference in item.evidence_refs:
                 if self.evidence(reference).review_state != "reviewed":
                     raise StoreError("INSUFFICIENT_EVIDENCE: calculation evidence needs review")
+
+    def _validate_model(self, record: EconomicModel) -> None:
+        references = {ref for item in record.parameters for ref in item.evidence_refs}
+        for claim in record.claims:
+            references.update(claim.supporting_evidence)
+            references.update(claim.conflicting_evidence)
+        for reference in references:
+            self.evidence(reference)
+
+    def save_model(self, record: EconomicModel) -> None:
+        record = EconomicModel.model_validate_json(record.model_dump_json())
+        self._validate_model(record)
+        self._save(record, record.model_id)
+
+    def model(self, identifier: UUID) -> EconomicModel:
+        record = self._load(identifier, EconomicModel)
+        if record.model_id != identifier:
+            raise StoreError("INVALID_RECORD: model identity mismatch")
+        self._validate_model(record)
+        return record
 
     def save_run(self, record: CalculationRun) -> None:
         self._validate_run(record)

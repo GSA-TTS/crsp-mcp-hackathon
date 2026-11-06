@@ -10,6 +10,7 @@ from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 
 from regulatory_mcp.analysis.calculations import AnalysisError, calculate
+from regulatory_mcp.analysis.model_server import register_model_tools
 from regulatory_mcp.analysis.requests import (
     AnnualizeRequest,
     BreakEvenRequest,
@@ -125,4 +126,5 @@ def create_analysis_server(store: EvidenceStore) -> FastMCP[Any]:
         """Evaluate a bounded deterministic discount-rate grid; no Monte Carlo simulation."""
         return await execute("run_parameter_scenarios", request)
 
+    register_model_tools(server, store)
     return server

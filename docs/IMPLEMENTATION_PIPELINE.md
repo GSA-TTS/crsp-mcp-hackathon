@@ -21,7 +21,7 @@ demonstration and owner assistance requests. AI implementation mode: scoped edit
 |---|---|---|---|
 | 1 | WP-06 | in_review; local implementation verified, FDA review pending | PDF/CSV ingestion, page/table inspection, cited selections, immutable review; owner confirms FDA Table 11 extraction. |
 | 2 | WP-04, WP-05, WP-06 | in_progress; Regulations.gov slice implemented, Federal Register contract blocked | Rule/docket/version and attachment collection; owner supplies inaccessible original links and confirms anchor version. |
-| 3 | WP-07, WP-08 | blocked on Phase 1 evidence and Phase 2 supporting models | Claim/assumption structure and model reconstruction; owner supplies underlying workbooks and resolves ambiguous timing. |
+| 3 | WP-07, WP-08 | in_progress; local model foundation verified, final-RIA reconstruction pending | Claim/assumption structure and model reconstruction; owner supplies underlying workbooks and resolves ambiguous timing. |
 | 4 | WP-08 | blocked on Phase 3 model | Multi-parameter sensitivity and threshold solving; owner selects defensible ranges and alternatives. |
 | 5 | WP-09, WP-10 | blocked on Phase 3 input inventory | Historical economic data and research corroboration; owner assists with keys, dictionaries, vintages and accessible papers. |
 | 6 | WP-11, WP-12 | blocked on Phases 3–5 | Reproducible reviewer report and second-agency rule demonstration; owner reviews usability and selects second rule. |
@@ -196,7 +196,294 @@ This establishes one successful operator-run download with the proposed header,
 not reliability or hosted acceptance. P2-04 is now awaiting authorized publication,
 deployment and the hosted source-to-evidence validation described above.
 
+### P2-04 hosted download acceptance — 2026-11-06T20:37:00Z
+
+Following the owner's deployment confirmation, OpenCode AI agent ran the actual
+hosted MCP download → page extraction → evidence creation → evidence retrieval
+workflow successfully (no mocks or uploaded fallback):
+
+- `regulations_retrieve_document_file` for document/record
+  `FDA-2012-N-1210-0549`, format pdf: PASS. Retrieved at
+  `2026-11-06T20:37:00.205460Z`, 323,322 bytes, parsed as 17 pages;
+  origin `retrieved`, artifact `bdba0341-3a7b-44ad-a226-e6b88b5585a7`,
+  SHA-256 `054afff784492ee7693f9f8a1e06caa0c80e1b54af563457ba631fb0cdafc4e6`.
+  Metadata artifact: `0b87bb96-3322-4aa5-8a83-50c0931b8d44`.
+- `documents_read_page`, page index 0: PASS; title identifies the supplemental
+  preliminary regulatory impact analysis and both FDA dockets.
+- `documents_create_evidence`: PASS; evidence
+  `e4ca38eb-daf8-4dda-93c7-b8c6568d5549` selects page 0, span [0,51),
+  `SUPPLEMENTAL PRELIMINARY REGULATORY IMPACT ANALYSIS`. Extraction version
+  `pypdf-7.0.0-layout`; review state `unreviewed`.
+- `documents_get_evidence`: PASS; returned the same content, locator and artifact.
+- `documents_get_run`, `db7c01d8-94d7-4aa6-b98b-a10a25e6718b`: PASS;
+  pre-deployment synthetic annualization still returns `1E+3` USD/payment.
+
+P2-04's single-document hosted retrieval/evidence acceptance now passes. This
+supersedes the download access blocker for this observed run, not a guarantee of
+future availability. Coverage remains one supporting PDF, not a complete docket.
+The document is the supplemental proposed analysis, not the final RIA. Evidence
+is not human-reviewed, and no economic calculation was validated from this PDF.
+P2-03 automatic version-chain resolution remains separately tracked.
+
 This file is the initial repository-local change-tracking record. Each WP entry is a distinct tracked item, including dependency-blocked work. Maintain status, owner, blocking dependency, and acceptance evidence here until external issues are created; then add issue links without losing the task identifiers.
+
+### Phase 3 model foundation — 2026-11-06
+
+Owner approved the scoped implementation and original 2016 final-RIA baseline.
+Mode: scoped edit, OpenCode AI agent (GPT 6 Astra). Branch:
+`feat/economic-model-reconstruction`. No new dependencies. Design and limitations
+are recorded in [ADR-0005](decisions/0005-use-declarative-economic-models.md) and
+[analysis usage](ANALYSIS.md).
+
+- **P3-01 (in_review):** bounded model/claim/parameter contracts and immutable
+  persistence. Missing parameters can be retained; all evidence references must
+  resolve. Numeric evidence needs review before saving successful calculations.
+- **P3-02 (in_review):** five arithmetic operations, topological evaluation,
+  dimension checking, 40-digit Decimal arithmetic, full intermediate results and
+  saved-output reconciliation. Five tools registered in the existing analysis
+  child, exercised through both conventional and CodeMode application gateways.
+- **P3-03 (blocked on source):** obtain the original final 123-page 2016 RIA in the
+  current workspace or hosted store; owner was asked to re-upload it. The
+  17-page supplemental PRIA is available but is not a substitute. Trigger:
+  verified final-document identity and evidence for its cost/benefit inputs.
+- **P3-04 (blocked on P3-03):** reconstruct the actual cost and benefits models,
+  identify the role of s1, reconcile published outputs with explicit tolerances,
+  and inventory missing study/model inputs. Synthetic example success does not
+  satisfy this task. Owner resolves ambiguous timing and supplies supporting
+  workbooks or references when necessary.
+- **P3-05 (blocked on publication/deployment):** hosted create-model → inspect →
+  evaluate → retrieve → reconcile acceptance. Local tools are not deployed.
+
+Verification: `make check` passed at 2026-11-06 (Bandit start
+`2026-11-06T20:44:54.988488Z`): Ruff lint/format (89 files), mypy (51 source files),
+210 tests, Bandit (no issues), secret scan (no candidates), wheel/sdist build,
+pip-audit (no known vulnerabilities). Initial checks exposed assertions prohibited
+by lint, mixed-type inference and import formatting; these were corrected and the
+full check rerun successfully. Tests include independent arithmetic, undefined
+operations, numeric bounds, cycles, unknown references, mismatched units/scope,
+missing values, reference validation, review enforcement and immutable records.
+
+Real local MCP demonstration (no mocks, synthetic documented inputs): the example
+in ANALYSIS.md created model `eeb6f219-9104-4ea9-81d1-4827a25ae80d` and run
+`1c8b04b5-7c91-4978-92d3-3800180f56fa` at `2026-11-06T20:45:31.753902Z`.
+Evaluation and saved-run retrieval returned benefits `200.0` USD from 1000 × 0.2.
+The first demo attempt stopped on an absent local directory; creating the ignored
+`artifacts/phase3-demo` directory resolved it. These IDs are local, not hosted.
+This is arithmetic/workflow validation, not an FDA model reconstruction.
+
+### Phase 3 final-RIA intake and partial reconstruction — 2026-11-06
+
+The owner uploaded the correct 123-page final report. SHA-256 matches the earlier
+final-RIA fixture: `726791d90275fe25556c7691091ab82ae9f22ed25d01728bb762a01dbe98a9e3`.
+Real local MCP ingestion retained 1,108,638 bytes as user-supplied artifact
+`e285d45a-76c6-4769-8549-e7d52299637b` at `2026-11-06T20:53:45.592005Z`.
+Page evidence was created for printed pages 72, 73, 77–83 and 121. Local manifests
+are in ignored `artifacts/phase3-demo/fda-source-demo.json` and
+`fda-calculations.json`. These are not hosted IDs. The first multi-page extraction
+command exceeded a 120-second overall deadline; rerunning with 600 seconds passed.
+
+**P3-03: source obtained; input review pending.** Page-79 evidence
+`1a251b94-33e7-4ab5-860c-78ad14050da0` supports source-linked model
+`ce0ad922-94e4-4edd-8128-1a927cfe88e9`; readiness correctly returns false until
+numeric evidence is reviewed. Owner checkpoint: confirm page-79 means/shares
+0.38, 0.92, 0.25 and 0.06, plus the published weighted effect 0.365. No human
+review was inferred from uploading the PDF. A page-78 uncertainty passage is
+attached to the claim's conflicting-evidence field as a caveat, not empirical
+disproof of transferability; the claim remains unassessed.
+
+**P3-04: partial reconstruction in progress.** Exploratory model
+`e8d48d19-7daa-4c00-a614-1a1692bbbb5d`, with explicitly unreviewed manual inputs
+labeled assumptions, returned `0.3646 = 0.38*0.92 + 0.25*0.06`. Run
+`8da15789-fc57-499a-ba8e-c1914232e764` was saved and retrieved at
+`2026-11-06T20:56:07.821554Z`. Comparison run
+`2b2e1b82-4b06-4456-be44-b021b24d5a81` returned difference -0.0004,
+`rounding_match=true` at increment 0.001, and `within_tolerance=false` at zero
+tolerance. The report's 0.183 mean of U(0,0.365) is likewise rounded from 0.1825;
+this is not a finding of arithmetic error.
+
+Real local MCP annualization of all six manually transcribed Table 11 PVs,
+using years 1–20 and 2014 USD, returned millions/year:
+
+| Rate | Low | Mean | High | Published rounded values |
+|---|---|---|---|---|
+| 3% | 156.142089 | 319.677905 | 576.979634 | 156 / 320 / 577 |
+| 7% | 209.363509 | 428.827062 | 781.950997 | 209 / 429 / 782 |
+
+These are published-input reproductions, not independent input validation or
+reconstruction of the underlying cost categories. Runs remain labeled assumptions.
+Mean 7% run: `1a666c22-476d-442f-b24c-13a5aa4a133e`.
+
+Remaining P3-04 source/model questions, now grounded in the final report:
+- References 1 and 2 (page 121) are RTI's 2014 FDA Labeling Cost Model and
+  Reformulation Cost Model (August 2015). Reference 3 is Abaluck (2011).
+  These supersede generic reference-number assumptions in the original WP-08 plan.
+- Table 12 reports WTP 61 USD/person/year; USE is 0.79; mean FDA food share
+  is 0.836. Benefits use 2015–2034 Census population projections (footnote 37).
+  Retrieve the exact vintage and annual population series before reconstructing PV.
+- Resolve the combined small/large-business compliance schedule and weights;
+  page 82's two-year example alone is not the combined schedule.
+- Resolve stochastic specification: page 79 describes U(0,0.365) for s1, while
+  footnote 39 also draws the SCL/DCL content components. Dependence, draw structure
+  and seed are not established. Do not claim Table 14 simulation or footnote 35
+  break-even thresholds reproduced from the deterministic weighting calculation.
+
+### P3-04 reference recovery and candidate benefits models — 2026-11-06
+
+Live hosted searches for Labeling Cost Model, Reformulation Cost Model and Abaluck
+returned 40/40, 22/22 and 9/9 reported keyword matches with page size 50. These
+are bounded mutable searches, not a complete docket inventory (`retrieval_status`
+remains unknown). Search artifacts: `1ce35c6f-0fdb-45c0-af30-049abc52beb2`,
+`f701513b-8752-4480-81e7-a55d787e9b2c`, `94252580-e665-4f37-a2f5-5af14dddb5ad`.
+
+All four selected PDFs were retrieved by the hosted MCP downloader, with title
+pages checked for the three supporting references:
+
+| Document ID suffix (FDA-2012-N-1210-) | Identity | Pages | Hosted artifact |
+|---|---|---|---|
+| 0881 | Abaluck, October 17, 2011 | 69 | `57debdcb-c4ca-40f2-8ba5-270f5895409d` |
+| 0882 | RTI Reformulation Cost Model, August 2015 | 153 | `640b2614-5100-4310-9762-8708b4e79d05` |
+| 0883 | RTI 2014 FDA Labeling Cost Model, August 2015 | 185 | `af586d40-17ac-44a2-8ed3-21f187530bd6` |
+| 0884 | Combined final RIA | 123 | `fbde4c1e-d04a-4f53-8e61-2b538c508d83` |
+
+Retrieval timestamps range from `2026-11-06T20:59:30.465421Z` to
+`2026-11-06T20:59:46.247357Z`. The docket final RIA has SHA-256
+`23a24da52c520b8cc5b876b3eca031dafaf68af18afa6f9f49f43fd2c0d6ef05`, different
+from the owner's uploaded bytes. Its page-79 weighting and s1 narrative agree
+with the uploaded report; full-document equivalence is not established.
+
+Abaluck Table 7 (PDF index 53, printed page 53) reports structural Model 1/2
+values 40.6/33.4 in 1990 dollars, consistent with FDA's rounded 41/33. Hosted
+evidence: `fac007ef-2998-49df-a387-76df24c4be43`, unreviewed. The inflation
+conversion to FDA's 67/55 in 2014 dollars still requires a verified price index.
+RIA pages 47–48 specify sales weights 95% large / 5% small businesses; hosted
+page-48 evidence `3bd4d563-64a8-438f-878b-c1c9674ea6e6` is unreviewed.
+
+Candidate deterministic benefits models were created through the real local MCP:
+`a78b434e-ec0d-43b3-9874-60feb7313a07` (3%) and
+`b5a1b5d1-a56d-42c4-a5c4-e4f715ebab6a` (7%). Each has 97 validated formulas for
+equations 1 and 2, and stores a candidate compliance sequence 0, .08, .9835, 1,…
+derived from the 95/5 weights and page-82 timing. WTP=61, USE=.79, FDA share=.836,
+and s1=.1825 are explicitly analyst assumptions transcribed from the report,
+not approved numeric evidence. The fixed s1 upper endpoint is a deterministic
+interpretation, not a reconstructed simulation. Models are in ignored
+`artifacts/phase3-demo/fda-benefits-0.03.json` and `fda-benefits-0.07.json`.
+
+Inspection correctly reports 19 missing population inputs (2016–2034), and
+`ready_for_evaluation=false`. Year 2015 contributes zero under the candidate
+first-year compliance assumption. No benefits PV or break-even reproduction is
+claimed. Next assistance: obtain the exact Census projection vintage/annual
+series used by FDA or the benefits workbook; confirm numeric transcriptions and
+the candidate schedule before evaluating source-linked runs. RTI reference
+retrieval is now unblocked; parameter extraction and proprietary-input gaps remain
+P3-04 work. General sensitivity/threshold tooling remains Phase 4, contingent on
+an agreed model and a scoped implementation plan.
+
+### P3-04 Census API historical projections probe — 2026-11-06
+
+Owner requested Census API retrieval instead of supplying a workbook. Hosted
+catalog discovery found `2014/pep/projpop` (projected population, 2014–2060) and
+2012 projection datasets. Catalog artifact `2c2968cc-190c-432b-92bd-82341a2da396`;
+2014 variable metadata artifact `682335f5-cc2b-4d7f-a4b7-8e5150cc007a`.
+The 2014 vintage is a candidate available before the final rule, not yet proven
+to be FDA's chosen vintage. YEAR is described as July 1, 2014–July 1, 2060.
+
+Direct sandbox AGE metadata request returned HTTP 403. Hosted table request for
+POP/YEAR/SEX/RACE/HISP/AGE, geography us:1, candidate predicates YEAR=2015,
+SEX=0, RACE=0, HISP=0, AGE=999 returned
+`MISSING_CREDENTIALS: Census requires an API key for this query`.
+No population rows were retrieved; category codes and actual geography support
+remain to be verified from a successful response/source definitions. P3-04
+population retrieval is blocked on configuring `CENSUS_API_KEY` in the hosted
+app. Owner configures through the existing secret-delivery workflow and restarts;
+then retry a single-year total before bounded 2015–2034 retrieval. Do not substitute
+current observations or post-2016 projections for the original analysis.
+
+Owner subsequently reported adding the Census key. Live hosted retries returned
+`UPSTREAM_HTTP_ERROR: status 302` for both the same 2014 projection query and a
+control query (`2023/cbp`, ESTAB, us:1). Neither returned data. This differs from
+the earlier recognized missing-key response but does not establish valid/active
+credentials or identify the redirect target. Redirects were not followed.
+Next operator checkpoint: confirm Census key activation and restart after setting
+the environment variable. If 302 persists, collect a credential-safe redirect
+classification (not the raw Location URL) before changing adapter behavior.
+
+Activation follow-up: owner diagnostic now returns HTTP 200 with the key.
+Hosted `2023/cbp` ESTAB/us:1 control query also succeeds, retaining one row in
+artifact `fa2a9dba-59b7-42e7-bf0d-6b9fa013c05a` (metadata
+`dd11880d-3a08-4aae-a8a1-248ca6ed1d07`). This clears the hosted credential blocker.
+The candidate `2014/pep/projpop` request instead returns HTTP 400. No population
+rows were retrieved. Next P3-04 action is verify the historical endpoint's
+geography and predicate contract; the adapter currently forces a `for` clause
+limited to us:1/state. This is a suspected compatibility issue, not a confirmed
+cause of the upstream 400. No additional key changes are indicated.
+
+### P3-04 historical population retrieval and mean-model agreement — 2026-11-06
+
+Census developer documentation recovered through Context7 gives the exact example
+`2014/pep/projpop?get=POP,YEAR&for=us:1`. Thus the suspected geography mismatch
+was not confirmed. Direct examples-page access remained blocked by sandbox 403.
+A YEAR=2015 filtered request returned `SCHEMA_MISMATCH: invalid table header`;
+the exact unfiltered published example succeeded, returning 47 annual rows
+(2014–2060). Hosted artifact `412bb015-580c-4d13-aa9e-3b57be98bf85`, metadata
+`56342d25-c2b9-476e-bca6-fcb9b68e8d3d`. Inspection returned all 47 rows with no
+continuation. National projected population: 321,368,864 in 2015; 368,245,560
+in 2034. No adapter change was required for this retrieval. The filtered-query
+header behavior remains a diagnostic question under P3-04, not an established
+adapter defect without raw-response inspection.
+
+The 2015–2034 values were manually transferred from the hosted result into local
+candidate model copies, explicitly labeled assumptions (historical-vintage choice
+and transcription not human-reviewed). 2014-vintage choice is not proven by the
+RIA citation alone. With s1=.1825, WTP=61, USE=.79, FDA share=.836 and the
+candidate 95/5 compliance schedule, local engine/store execution returned:
+
+| Rate | Candidate benefits PV, 2014 USD | FDA displayed mean | Implied s1 threshold | FDA footnote 35 |
+|---|---|---|---|---|
+| 3% | 33,141,594,136.2862467 | 33.1 billion | 0.0261897480 | 0.0262 |
+| 7% | 22,339,994,154.7695973 | 22.3 billion | 0.0371127000 | 0.0371 |
+
+Thresholds were computed separately using Decimal as cost*s1/PV with Table 11
+mean costs 4.756/4.543 billion. They are analytic thresholds for this linear
+candidate model, not a simulation rerun or general threshold-tool acceptance.
+Both PVs and thresholds agree at published precision. This supports, but does
+not prove, the chosen population vintage, compliance schedule and mean inputs.
+Simulation tails/dependence and causal validity remain unresolved.
+
+Local saved runs: `5568b6a8-eb56-41b9-9976-62024086cc59` (3%, created
+`2026-11-06T21:20:55.390827Z`) and `9a03b9d6-acf7-45a1-a39a-6345c6bb4cfe`
+(7%, created `2026-11-06T21:20:55.421251Z`). Results and model IDs are in ignored
+`artifacts/phase3-demo/fda-census-results.json`. These are not hosted records.
+
+**P3-06 (ready; blocks full-size MCP acceptance): compact model-run responses.**
+Live local MCP evaluation of the 97-formula model returned
+`BUDGET_EXHAUSTED: output byte limit exceeded`. Model engine/store execution
+subsequently succeeded with the same definition. The full nested manifest exceeds
+the gateway response budget; small-model integration tests did not catch it.
+Implement bounded run summaries and paged inspection while retaining full
+immutable manifests, then exercise a realistic 97-formula model in both gateway
+modes and verify saved-run inspection. Do not raise the shared output limit or
+claim the large-model MCP workflow passed. Public interface changes require the
+scoped plan/approval before this follow-up implementation.
+
+P3-06 implementation update: owner approved compact run summaries and paged
+inspection. `analysis_evaluate_model` and `analysis_reconcile_model_output` now
+return outputs/ID summaries; `analysis_get_model_run` retrieves a summary and
+`analysis_inspect_model_run` pages the full deterministic ASCII JSON manifest
+(max 4000 characters, offsets, total length and SHA-256). Stored manifests retain
+all intermediate results and comparison source snapshots. No shared budget was
+raised. Both real gateway modes passed a 97-formula regression with complete
+evaluation/comparison manifest reconstruction and hash verification. Targeted
+tests: 22 passed. State: in_review, full checks and hosted deployment follow.
+
+P3-06 verification: `make check` passed on 2026-11-06 (Bandit timestamp
+21:24:14 UTC): 212 tests, lint/format, mypy (52 files), secret/static scans,
+build and dependency audit. The actual saved 3% FDA candidate then evaluated
+successfully through local MCP and returned a compact summary. Run
+`4182713f-864f-4e3a-ac55-a61e33113baa`, created
+`2026-11-06T21:24:33.139649Z`, returned 33,141,594,136.2862467 USD. Its complete
+74,159-character manifest was fetched in 19 pages, concatenated, parsed and
+SHA-256 verified. This resolves the observed local response-budget failure;
+hosted Phase 3 deployment and input review remain pending. No new dependencies.
 
 Statuses: `ready`, `blocked`, `in_progress`, `in_review`, `done`. Ready means ready for scoping and assignment, not authorization to install dependencies or change infrastructure. WP-01 through WP-03 were implemented by the OpenCode AI agent under the owner's approval; other implementation owners are unassigned.
 
