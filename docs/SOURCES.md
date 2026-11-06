@@ -3,7 +3,7 @@ title: "Public Source Adapters"
 description: "Implemented read tools, verified source contracts, and live acceptance blockers."
 status: draft
 tier: 2
-last_updated: "2026-10-30"
+last_updated: "2026-11-05"
 related_files: ["DEVELOPMENT.md", "IMPLEMENTATION_PIPELINE.md"]
 ---
 
@@ -43,16 +43,16 @@ All use `https://www.reginfo.gov`. Agenda vintage is explicit, not labeled “cu
 
 DTD, entity, and external-reference resolution are forbidden. Root and record types are checked, and each record needs identity/title. Contact fields are omitted from the projected results. Raw dates and quantity strings remain unchanged; empty elements differ from absent elements. Record IDs are snapshot-relative and must be paired with artifact ID. A RIN can appear in multiple reviews and is not a unique review identifier.
 
-Live transport acceptance is **BLOCKED** here: DNS resolves Reginfo to a nonpublic address and the adapter rejects it. Earlier direct documentation requests reached the report indexes and sampled XML, establishing source shape but not passing the adapter's live gate. Resume in an environment with approved public DNS/egress; do not disable the destination check.
+Live transport acceptance remains **BLOCKED** pending a restarted MCP process configured with an approved egress proxy, or an environment with public DNS/egress. Direct mode resolves Reginfo to a nonpublic address here and correctly rejects it. Earlier direct documentation requests reached the report indexes and sampled XML, establishing source shape but not passing the adapter's live gate.
 
 ## Transport and limitations
 
 ### Census and BLS prototypes
 
-These tools are registered; live verification remains **blocked**. The owner supplied the Census Available APIs page (revised 2026-09-17) and BLS v2 signatures (modified 2020-10-05). Tests use documentation-derived synthetic payloads, not live responses. The Census list includes CBP but does not list SUSB; that absence does not prove SUSB has no downloadable data.
+These tools are registered; live verification remains **blocked** pending a restarted MCP process with approved egress configuration. The owner supplied the Census Available APIs page (revised 2026-09-17) and BLS v2 signatures (modified 2020-10-05). Tests use documentation-derived synthetic payloads, not live responses. The Census list includes CBP but does not list SUSB; that absence does not prove SUSB has no downloadable data.
 
 - `census_discover_datasets(query, limit)`: search the API catalog. SUSB availability is not assumed.
-- `census_get_variables(dataset, query, limit)`: inspect definitions for a year-qualified dataset path.
+- `census_get_variables(dataset, query, limit)`: search full definitions for a year-qualified dataset path and return compact summaries. Nested value dictionaries are omitted; summary text is capped at 256 characters per field and fields at an 800-byte JSON budget per definition. `omitted_fields` and `truncated_fields` identify shortened content. The item list has a conservative 16 KB JSON budget in addition to the requested count; `retrieval_status=partial` means some matches were not returned. Narrow the query to locate omitted matches. The full downloaded metadata remains in the retained artifact.
 - `census_fetch_table(dataset, variables, geography, predicates)`: validate requested variables against metadata; retain raw table, query, metadata, and vintage. Supports up to 40 variables, 10 predicates, and `us:1`, `state:NN`, or `state:*` geography. Relevant suppression flags and industry/size labels must be selected explicitly. Dataset definitions determine whether counts represent firms or establishments.
 - `census_inspect_table(artifact_id, offset, limit)`: inspect retained rows without converting nulls or suppression markers to numeric values.
 - `bls_get_series(series_id, latest=False)`: retrieve the documented past-three-year default window or the latest observation. IDs allow uppercase letters, digits, underscores, dashes, and hashes; hashes are percent-encoded. The 100-character cap is a local bound. Both documented `Results` object/list envelopes are accepted. Raw periods, values, footnotes, aspects, and catalog are retained. Seasonal adjustment copies `catalog.seasonality` when available; units remain unknown rather than inferred from measure descriptions.
@@ -61,10 +61,27 @@ These tools are registered; live verification remains **blocked**. The owner sup
 
 The supplied BLS documentation establishes registered POST queries for up to 50 series and time frames up to 20 years, with optional catalog/calculations/annualaverage/aspects. Query transport and environment-supplied registration-key support are tracked in WP-09. Future keys must be sent in the JSON body, not copied into query URLs or retained request metadata. Daily/rate quotas are not established by the supplied signature page.
 
-No Census/BLS key is sent. If registration is needed, requests fail explicitly; credential support requires verified documentation. Remaining work is tracked in [WP-09](IMPLEMENTATION_PIPELINE.md). The fixed transport origins now also include `api.census.gov` and `api.bls.gov`, subject to the same destination checks.
+Advertised Census `attributes` (for example, `ESTAB_F`) are validated as variable
+names and accepted even when absent from the top-level variable dictionary.
+Discovery includes an `attribute_of` record for such variables; the parent measure's
+type, label, and flag meaning are not inferred. Existing top-level definitions take
+precedence. Table responses also use compact variable metadata, with full source
+definitions retained in `metadata_artifact_id`.
 
-Only fixed public origins are reachable through the source transport, also constrained by configured allowed hosts. HTTPS uses certificate verification and TLS 1.2 minimum, environment proxies are not automatically used, and all redirects fail. Time, decoded bytes, retries, and attempt spacing are bounded. Authentication/schema failures are not retried; selected transient failures use bounded backoff and Retry-After guidance. Gateway execution deadlines bound the overall operation.
+Census table queries require authentication. Per the project exception in `AGENTS.md`,
+the server accepts `CENSUS_API_KEY` from environment secrets. When configured, the
+key is appended as a `key` parameter to outbound HTTPS requests to `api.census.gov`
+only; redirects are rejected. The key is strictly excluded from `artifact.source_url`,
+query returns, logs, errors, and stored manifests. If unconfigured, Census queries
+redirecting to `missing_key.html` raise `MISSING_CREDENTIALS`; if an invalid key is
+rejected by Census, `AUTHENTICATION_FAILED` is raised. Credentials cannot cross origins.
+Remaining work is tracked in [WP-09](IMPLEMENTATION_PIPELINE.md). The fixed transport
+origins include `api.census.gov` and `api.bls.gov`, subject to the same destination checks.
 
-Public-address DNS preflight is an additional check on these fixed, non-user-controlled origins; it does not pin the subsequent HTTP connection to that DNS answer. A future general-purpose attachment downloader needs connection-level destination validation and redirect checks in WP-06. Callers cannot pass arbitrary URLs into these public tools.
+Only fixed public origins are reachable through the source transport, also constrained by configured allowed hosts. HTTPS uses certificate verification and TLS 1.2 minimum, generic environment proxies are never trusted, and all redirects fail. Time, decoded bytes, retries, and attempt spacing are bounded. Authentication/schema failures are not retried; selected transient failures use bounded backoff and Retry-After guidance. Gateway execution deadlines bound the overall operation.
+
+Direct mode performs a public-address DNS preflight. Optional proxy mode requires the explicit masked `REGULATORY_MCP_HTTPS_PROXY` setting and delegates target DNS/connection enforcement to that approved proxy; it does not relax the application target allowlist. The client sends the original HTTPS target through the CONNECT tunnel, retaining target certificate and hostname verification, and credentials remain restricted to the Regulations.gov target. The proxy is a trusted security-boundary component and must enforce its own destination policy. See [ADR-0001](decisions/0001-use-an-explicit-egress-proxy-for-public-sources.md).
+
+Public-address DNS preflight in direct mode is an additional check on these fixed, non-user-controlled origins; it does not pin the subsequent HTTP connection to that DNS answer. Proxy mode cannot inspect the proxy's ultimate socket destination, so its safety depends on an administratively approved proxy enforcing CONNECT policy. A future general-purpose attachment downloader needs connection-level destination validation and redirect checks in WP-06. Callers cannot pass arbitrary URLs into these public tools.
 
 Errors are safe MCP tool errors. Raw payloads and keys are not included in error messages. HTTPX2 and defusedxml were already installed transitively; both are now exact direct dependencies because adapters import them. HTTPX2 declares BSD-3-Clause and defusedxml PSF licensing (confirm metadata on dependency upgrades).

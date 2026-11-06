@@ -1,5 +1,6 @@
 """Read-only MCP access to retained evidence and calculation manifests."""
 
+import asyncio
 from typing import Any
 from uuid import UUID
 
@@ -17,7 +18,7 @@ def create_evidence_server(store: EvidenceStore) -> FastMCP[Any]:
     async def get_artifact(artifact_id: UUID) -> Artifact:
         """Inspect provenance and verify the bytes of a retained artifact."""
         try:
-            return store.artifact(artifact_id)
+            return await asyncio.to_thread(store.artifact, artifact_id)
         except StoreError as exc:
             raise ToolError(str(exc)) from exc
 
@@ -25,7 +26,7 @@ def create_evidence_server(store: EvidenceStore) -> FastMCP[Any]:
     async def get_evidence(evidence_id: UUID) -> Evidence:
         """Retrieve a passage or table locator and verify its source artifact."""
         try:
-            return store.evidence(evidence_id)
+            return await asyncio.to_thread(store.evidence, evidence_id)
         except StoreError as exc:
             raise ToolError(str(exc)) from exc
 
@@ -33,7 +34,7 @@ def create_evidence_server(store: EvidenceStore) -> FastMCP[Any]:
     async def get_run(run_id: UUID) -> CalculationRun:
         """Retrieve a calculation manifest and validate its evidence references."""
         try:
-            return store.run(run_id)
+            return await asyncio.to_thread(store.run, run_id)
         except StoreError as exc:
             raise ToolError(str(exc)) from exc
 

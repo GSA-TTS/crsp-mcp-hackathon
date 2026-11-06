@@ -1,5 +1,6 @@
 """Public snapshot retrieval and bounded inspection tools."""
 
+import asyncio
 from typing import Annotated, Any
 from uuid import UUID
 
@@ -32,7 +33,7 @@ def create_reginfo_server(adapter: Reginfo) -> FastMCP[Any]:
     ) -> dict[str, Any]:
         """Search retained snapshot fields, preserving record type and source locators."""
         try:
-            return adapter.inspect(artifact_id, query, offset, limit)
+            return await asyncio.to_thread(adapter.inspect, artifact_id, query, offset, limit)
         except (SourceError, StoreError) as exc:
             raise ToolError(str(exc)) from exc
 

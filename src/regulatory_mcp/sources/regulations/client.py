@@ -1,5 +1,6 @@
 """Validated JSON:API records; bounded page reads with explicit coverage."""
 
+import asyncio
 import json
 import re
 from datetime import UTC, datetime
@@ -77,7 +78,8 @@ class Regulations:
             raise SourceError("SCHEMA_MISMATCH: expected JSON") from exc
         if not isinstance(payload, dict):
             raise SourceError("SCHEMA_MISMATCH: expected an object")
-        artifact = self.store.retain(
+        artifact = await asyncio.to_thread(
+            self.store.retain,
             raw,
             source_system="regulations.gov",
             source_url=url,

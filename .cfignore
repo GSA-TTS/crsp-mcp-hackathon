@@ -1,0 +1,10 @@
+.git/
+.cache/
+.venv/
+artifacts/
+tests/
+docs/
+opencode.json
+.env
+.env.*
+*.log

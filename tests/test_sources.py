@@ -206,6 +206,12 @@ def test_transport_status_and_size_handling():
                 await adapter.get(url)
         with pytest.raises(SourceError, match="credentials"):
             await adapter.get("https://www.reginfo.gov", key="fixture-value")
+        with pytest.raises(SourceError, match="credentials"):
+            await adapter.get("https://api.regulations.gov", census_key="fixture-value")
+        with pytest.raises(SourceError, match="API key must not be passed in the URL"):
+            await adapter.get(
+                "https://api.census.gov/data?key=fixture-value", census_key="fixture-value"
+            )
 
     asyncio.run(run())
     with pytest.raises(SourceError, match="RATE_LIMITED"):
@@ -220,5 +226,87 @@ def test_transport_rejects_private_dns_before_http(monkeypatch):
         monkeypatch.setattr(asyncio.get_running_loop(), "getaddrinfo", private_address)
         with pytest.raises(SourceError, match="nonpublic address"):
             await PublicHTTP(Settings()).get("https://www.reginfo.gov/public/do/PRAXML")
+
+    asyncio.run(run())
+
+
+@pytest.mark.parametrize(
+    ("origin", "location", "marker", "code"),
+    [
+        (
+            "api.census.gov",
+            "https://api.census.gov/data/missing_key.html",
+            "1",
+            "MISSING_CREDENTIALS",
+        ),
+        ("api.census.gov", "/data/missing_key.html", "1", "MISSING_CREDENTIALS"),
+        ("api.census.gov", "https://example.com/missing_key.html", "1", "UPSTREAM_HTTP_ERROR"),
+        ("api.census.gov", "/data/missing_key.html", "0", "UPSTREAM_HTTP_ERROR"),
+        ("api.bls.gov", "https://api.census.gov/data/missing_key.html", "1", "UPSTREAM_HTTP_ERROR"),
+    ],
+)
+def test_census_missing_key_redirect_is_classified_without_exposing_headers(
+    origin, location, marker, code
+):
+    async def run():
+        response = httpx.Response(
+            302,
+            headers={
+                "Location": location,
+                "X-DataWebAPI-KeyError": marker,
+                "Set-Cookie": "private",
+            },
+            request=httpx.Request("GET", f"https://{origin}/data/2023/cbp?get=ESTAB&for=us:1"),
+        )
+        with pytest.raises(SourceError, match=code) as error:
+            await PublicHTTP(Settings())._response(response, 0)
+        assert "private" not in str(error.value) and "https://" not in str(error.value)
+        if code == "MISSING_CREDENTIALS":
+            with pytest.raises(SourceError, match="AUTHENTICATION_FAILED") as key_err:
+                await PublicHTTP(Settings())._response(response, 0, had_census_key=True)
+            assert "private" not in str(key_err.value) and "https://" not in str(key_err.value)
+
+    asyncio.run(run())
+
+
+def test_transport_uses_only_explicit_proxy_without_local_target_dns(monkeypatch):
+    async def run():
+        requested = {}
+
+        async def target_dns_must_not_run(*args, **kwargs):
+            raise AssertionError("proxy mode must not resolve the target locally")
+
+        class Stream:
+            async def __aenter__(self):
+                return httpx.Response(200, content=b"fixture")
+
+            async def __aexit__(self, *args):
+                return False
+
+        class Client:
+            def __init__(self, **kwargs):
+                requested.update(kwargs)
+
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, *args):
+                return False
+
+            def stream(self, method, url, *, headers):
+                requested.update(method=method, url=url, headers=headers)
+                return Stream()
+
+        monkeypatch.setattr(asyncio.get_running_loop(), "getaddrinfo", target_dns_must_not_run)
+        monkeypatch.setattr("regulatory_mcp.sources.http.httpx.AsyncClient", Client)
+        settings = Settings(
+            https_proxy=SecretStr("http://proxy.internal:8080"),
+            source_request_interval_seconds=0.1,
+        )
+        assert await PublicHTTP(settings).get("https://api.bls.gov/test") == b"fixture"
+        assert requested["proxy"] == "http://proxy.internal:8080"
+        assert requested["trust_env"] is False
+        assert requested["follow_redirects"] is False
+        assert requested["url"] == "https://api.bls.gov/test"
 
     asyncio.run(run())

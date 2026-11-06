@@ -3,7 +3,7 @@ title: "Regulatory Analysis MCP Technical Specification"
 description: "Proposed gateway, evidence, source-adapter, and calculation contracts."
 status: draft
 tier: 2
-last_updated: "2026-10-30"
+last_updated: "2026-11-05"
 related_files: ["../README.md", "../PROJECT_PLAN.md", "IMPLEMENTATION_PIPELINE.md"]
 ---
 
@@ -48,6 +48,18 @@ FastMCP gateway: CodeMode or conventional mode
 - Validate the runtime's isolation and permitted capabilities. Do not assume generated code is sandboxed merely because the feature is called CodeMode.
 - Keep a conventional mode with equivalent underlying capabilities and evidence outputs.
 - Initially use local stdio transport. Do not introduce custom HTTP routes as part of mounting.
+
+### Approved hosted extension
+
+WP-14–WP-17 add a separately selected stateless Streamable HTTP entry point at
+`/mcp` and process health at `/health`. The same child catalogs are assembled
+for both transports. HTTP requires a secret-sourced shared bearer token; all
+authorized callers share an evidence workspace. Public binding requires S3
+storage and an HTTPS external origin. Host/Origin validation stays enabled.
+S3 conditional creates, bounded reads and schema/hash verification preserve
+schema-v1 evidence semantics across restarts. One instance/process is supported;
+WP-18 blocks scale-out until upstream quota coordination is implemented.
+See [deployment](DEPLOYMENT.md) and [ADR-0002](decisions/0002-host-regulatory-mcp-on-cloudgov.md).
 
 ## 2. Shared response and evidence contracts
 

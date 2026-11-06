@@ -1,5 +1,6 @@
 """Conventional Census discovery, metadata, and retained table tools."""
 
+import asyncio
 from collections.abc import Awaitable
 from typing import Annotated, Any
 from uuid import UUID
@@ -51,7 +52,7 @@ def create_census_server(adapter: Census) -> FastMCP[Any]:
     ) -> dict[str, Any]:
         """Page through raw table values without converting suppression markers to numbers."""
         try:
-            return adapter.inspect(artifact_id, offset, limit)
+            return await asyncio.to_thread(adapter.inspect, artifact_id, offset, limit)
         except (SourceError, StoreError) as exc:
             raise ToolError(str(exc)) from exc
 
