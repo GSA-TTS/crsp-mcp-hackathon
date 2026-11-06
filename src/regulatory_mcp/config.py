@@ -27,6 +27,8 @@ class Settings(BaseSettings):
     gateway_mode: Literal["conventional", "codemode"] = "conventional"
     allowed_hosts: tuple[str, ...] = (
         "api.regulations.gov",
+        "downloads.regulations.gov",
+        "www.federalregister.gov",
         "www.reginfo.gov",
         "api.census.gov",
         "api.bls.gov",

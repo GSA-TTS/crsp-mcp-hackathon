@@ -15,7 +15,14 @@ import httpx2 as httpx
 from regulatory_mcp.config import Settings
 
 logger = logging.getLogger(__name__)
-ORIGINS = {"api.regulations.gov", "www.reginfo.gov", "api.census.gov", "api.bls.gov"}
+ORIGINS = {
+    "www.federalregister.gov",
+    "api.regulations.gov",
+    "downloads.regulations.gov",
+    "www.reginfo.gov",
+    "api.census.gov",
+    "api.bls.gov",
+}
 
 
 class SourceError(ValueError):

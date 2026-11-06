@@ -6,8 +6,10 @@ from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from pydantic import Field
 
+from regulatory_mcp.evidence import StoreError
 from regulatory_mcp.sources.http import SourceError
 from regulatory_mcp.sources.regulations.client import Regulations, identifier
+from regulatory_mcp.sources.regulations.collection import Collection
 
 Term = Annotated[str, Field(max_length=500)]
 Page = Annotated[int, Field(ge=1, le=20)]
@@ -16,6 +18,40 @@ Size = Annotated[int, Field(ge=5, le=250)]
 
 def create_regulations_server(adapter: Regulations) -> FastMCP[Any]:
     server: FastMCP[Any] = FastMCP("Regulations.gov", mask_error_details=True)
+    collection = Collection(adapter)
+
+    @server.tool
+    async def list_document_files(document_id: str) -> dict[str, Any]:
+        """List primary and attachment file metadata for a public document ID."""
+        try:
+            return await collection.list_files(document_id)
+        except (SourceError, StoreError) as exc:
+            raise ToolError(str(exc)) from exc
+
+    @server.tool
+    async def retrieve_document_file(
+        document_id: str,
+        record_id: str,
+        format_name: str = "pdf",
+    ) -> dict[str, Any]:
+        """Retrieve a metadata-selected PDF/CSV into the document evidence store."""
+        try:
+            return await collection.retrieve(document_id, record_id, format_name)
+        except (SourceError, StoreError) as exc:
+            raise ToolError(str(exc)) from exc
+
+    @server.tool
+    async def collect_docket_page(
+        docket_id: str,
+        search_term: Term = "",
+        page: Page = 1,
+        page_size: Annotated[int, Field(ge=5, le=25)] = 10,
+    ) -> dict[str, Any]:
+        """Retain a bounded docket/document manifest; no exhaustive collection claim."""
+        try:
+            return await collection.collect(docket_id, search_term, page, page_size)
+        except (SourceError, StoreError) as exc:
+            raise ToolError(str(exc)) from exc
 
     async def detail(kind: Any, record_id: str, attachments: bool = False) -> dict[str, Any]:
         try:
