@@ -3,7 +3,7 @@ title: "Regulatory Analysis MCP Implementation Pipeline"
 description: "Durable work ledger, dependencies, agent handoffs, and verification gates."
 status: draft
 tier: 2
-last_updated: "2026-11-05"
+last_updated: "2026-11-06"
 related_files: ["../README.md", "../PROJECT_PLAN.md", "SPECIFICATION.md"]
 ---
 
@@ -83,6 +83,118 @@ documentation and record requests returned network-policy 403. Candidate record:
 - **P2-04 (blocked on deployment/access):** actual FDA supporting-file retrieval and
   collection completeness report through hosted tools. Current live evidence is
   metadata only for `FDA-2012-N-1210-0549`, not final-RIA identity verification.
+
+### Phase 2 hosted live validation — 2026-11-06
+
+OpenCode AI agent (GPT 6 Astra), requested by the owner after deployment of PRs
+#8 and #9. Mode: live validation with a scoped, single-file documentation update.
+Calls began at `2026-11-06T17:50:00.895Z`. These are actual hosted MCP results,
+not fixtures or imported operator JSON. This entry supersedes earlier deployment
+and Federal Register access blockers; it does not mark all Phase 2 work complete.
+
+| Check | Actual result | Status |
+|---|---|---|
+| `federal_register_search_documents`, term `FDA-2012-N-1210`, page 1, size 5 | 5 of 20 keyword matches; 4 pages, next page 2, `retrieval_status=partial` | PASS: bounded search |
+| `federal_register_get_document`, `2016-11867` | Final rule, 2016-05-27, 81 FR 33742, RIN 0910-AF22, docket FDA-2012-N-1210, 21 CFR 101; origin retrieved | PASS |
+| `documents_get_artifact` for the rule record | Retained JSON retrieved and bytes verified; 19,015 bytes | PASS |
+| `federal_register_inspect_supporting_documents`, offset 0, limit 5 | 5 displayed, 10 embedded, 435 reported; historical lookup 2016-06-16T06:00:14Z, next offset 5 | PASS: partial historical coverage |
+| `regulations_list_document_files`, `FDA-2012-N-1210-0549` | One primary PDF, reported size 323,322 bytes | PASS: metadata only |
+| `regulations_retrieve_document_file`, same document/record ID, format pdf | `AUTHENTICATION_FAILED: source rejected access` | BLOCKED: source access |
+| `regulations_get_document`, same ID, include attachments | Metadata succeeds; title identifies Reference 12 - NFL SFL Supplemental PRIA; posted 2015-07-27; no attachments | PASS: supplemental analysis identity |
+| PDF extraction and evidence creation | No PDF artifact returned by failed download; downstream tools not called | BLOCKED on download |
+| `documents_get_run`, `db7c01d8-94d7-4aa6-b98b-a10a25e6718b` | Saved synthetic annualization run created 2026-11-05T21:26:01.105828Z; payment `1E+3` USD/payment, 3%, years 1–3 | PASS: pre-deployment run persists |
+
+Retained hosted references:
+
+- Search response: `c1272d2c-2f05-4465-aa15-4640ed933daa`.
+- Rule record: `e6778ab9-7a59-4670-8e42-63850b07e304`, retrieved
+  `2026-11-06T17:50:05.381556Z`; SHA-256
+  `9407e804cfebe4682713c92074f971f32fc3aa88000fd99147c55b263045d70f`.
+- File-list metadata: `acdac564-c4b1-41a2-a500-8385faef9f28`.
+- Follow-up document metadata: `2fe5989e-928a-4902-99dc-135b0f1724f1`.
+
+Coverage: one keyword search page is not a complete docket or verified version
+chain. Embedded references are partial and historical. The requested supporting
+document is a 2015 supplemental proposed analysis, not proof of the final RIA's
+identity. The persisted calculation uses synthetic assumptions and does not
+validate FDA's economic model.
+
+Local documentation verification: `git diff --check` passed. The command
+`uv run --locked --offline pytest tests/test_documents.py -q` was BLOCKED before
+test execution because `ruff==0.17.3` was unavailable in the local cache. A
+standalone Python standard-library check of this ledger's required frontmatter,
+local links, work-package references and acceptance references passed. No runtime
+code changed; build and runtime security scans are not applicable to this edit.
+
+Tracking updates:
+
+- **P2-02a/P2-02b:** hosted detail/search acceptance passes for these calls.
+- **P2-03:** version-chain resolution remains in progress; Federal Register
+  search access is now unblocked.
+- **P2-04:** blocked on supporting-file access. Source inspection shows the
+  combined retrieval refreshes API metadata, then downloads the PDF without an
+  API credential. The error maps to HTTP 401 or 403 but omits the failed request's
+  stage and exact status. Successful surrounding metadata calls suggest the
+  download request was rejected; this is not a confirmed root cause. Owner
+  assistance: retrieve the same public PDF on the Mac and report HTTP status;
+  upload it if successful. An uploaded fallback must retain user-supplied origin
+  and cannot count as a pass for hosted download. Unblock when hosted retrieval
+  succeeds, then run extraction, evidence creation and evidence read-back.
+
+Owner follow-up on 2026-11-06 (operator-supplied terminal output, not an agent
+network observation): the cloud.gov app reports running/ready and `/health`
+returns `{"status":"ok"}`. The same public PDF URL requested from the owner's
+Mac with curl returns exit 56 and `HTTP 403`; no successful PDF upload resulted.
+Thus the access failure is not isolated to the hosted MCP runtime. Its cause
+remains unconfirmed; this does not establish invalid API credentials. P2-04
+remains blocked. Next assistance: open the document's Regulations.gov page in a
+normal browser and try its download link; if successful, upload the PDF for a
+separately labeled user-supplied extraction test.
+
+### P2-04 download User-Agent compatibility change — 2026-11-06
+
+Owner-approved scoped implementation by OpenCode AI agent (GPT 6 Astra).
+Subsequent owner observations supersede the earlier cached-browser ambiguity:
+the same PDF downloaded with HTTP 200 using copied browser headers and then
+using only the Chrome User-Agent (no cookies). A comparison using
+`regulatory-mcp/0.1` returned HTTP 403. This strongly implicates User-Agent
+handling on the owner's network; it does not establish identical behavior from
+other environments.
+
+`sources/http.py` now sends `Mozilla/5.0 (compatible; regulatory-mcp/0.1)` only
+to `downloads.regulations.gov`. The compatibility prefix retains an explicit
+agent identity. Other sources retain the original User-Agent. Credentials are
+still rejected on the download host; no cookies are added. A real HTTP client
+with a mocked transport verifies host scoping, API-key isolation, rejection of
+both credential types on downloads, and disabled redirects.
+
+Verification transcript (2026-11-06, full check scan timestamp
+`2026-11-06T20:22:25.635641Z`):
+
+- `make setup`: PASS, installed the existing locked environment; no dependency
+  versions changed. This resolves the earlier local pytest setup blocker.
+- `make check`: PASS, Ruff lint/format (84 files), mypy (48 source files),
+  189 tests, Bandit (no issues), secret scan, wheel/sdist build, pip-audit
+  (no known vulnerabilities).
+- Live curl using the exact new compatibility string: HTTP 403, exit 22.
+- Diagnostic comparison using the owner's successful Chrome string from this
+  sandbox: also HTTP 403, exit 22. Neither request downloaded a PDF.
+
+P2-04 remains **blocked on live acceptance**, not fixed by test success. The
+change is locally implemented and uncommitted, not deployed. Owner next step:
+test the exact `Mozilla/5.0 (compatible; regulatory-mcp/0.1)` string on the Mac.
+If accepted there, publish/redeploy with owner authorization and repeat hosted
+download, extraction, evidence creation and read-back. If rejected there, revisit
+the compatibility choice before deployment. Browser cookies must not be copied
+into server configuration.
+
+Owner follow-up: the displayed Mac curl command using the exact new
+`Mozilla/5.0 (compatible; regulatory-mcp/0.1)` string returned HTTP 200.
+The pasted output also begins with an unattributed HTTP 403; its originating
+command is not shown, so it is not classified as another compatibility test.
+This establishes one successful operator-run download with the proposed header,
+not reliability or hosted acceptance. P2-04 is now awaiting authorized publication,
+deployment and the hosted source-to-evidence validation described above.
 
 This file is the initial repository-local change-tracking record. Each WP entry is a distinct tracked item, including dependency-blocked work. Maintain status, owner, blocking dependency, and acceptance evidence here until external issues are created; then add issue links without losing the task identifiers.
 

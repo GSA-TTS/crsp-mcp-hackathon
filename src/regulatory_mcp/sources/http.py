@@ -15,6 +15,9 @@ import httpx2 as httpx
 from regulatory_mcp.config import Settings
 
 logger = logging.getLogger(__name__)
+# Public downloads reject the default agent in owner-observed requests. Keep our
+# identity explicit while using a browser-compatible product prefix on this host.
+DOWNLOAD_USER_AGENT = "Mozilla/5.0 (compatible; regulatory-mcp/0.1)"
 ORIGINS = {
     "www.federalregister.gov",
     "api.regulations.gov",
@@ -124,7 +127,11 @@ class PublicHTTP:
         context.minimum_version = ssl.TLSVersion.TLSv1_2
         headers = {
             "Accept": "application/json, application/xml, text/xml",
-            "User-Agent": "regulatory-mcp/0.1",
+            "User-Agent": (
+                DOWNLOAD_USER_AGENT
+                if parsed.hostname == "downloads.regulations.gov"
+                else "regulatory-mcp/0.1"
+            ),
         }
         if key is not None:
             headers["X-Api-Key"] = key
