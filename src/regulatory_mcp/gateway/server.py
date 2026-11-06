@@ -6,13 +6,17 @@ from typing import Any
 
 from fastmcp import FastMCP
 from fastmcp.experimental.transforms.code_mode import CodeMode, MontySandboxProvider
+from fastmcp.server.auth import AuthProvider
 
 from regulatory_mcp.config import Settings
 from regulatory_mcp.gateway.limits import Limits
 
 
 async def create_gateway(
-    children: Mapping[str, FastMCP[Any]], settings: Settings | None = None
+    children: Mapping[str, FastMCP[Any]],
+    settings: Settings | None = None,
+    *,
+    auth: AuthProvider | None = None,
 ) -> FastMCP[Any]:
     """Mount children and reject exposed-name collisions before returning.
 
@@ -20,7 +24,7 @@ async def create_gateway(
     by FastMCP mounting. The catalog tool enables discovery inside CodeMode.
     """
     settings = settings or Settings()
-    gateway: FastMCP[Any] = FastMCP("Regulatory analysis", mask_error_details=True)
+    gateway: FastMCP[Any] = FastMCP("Regulatory analysis", mask_error_details=True, auth=auth)
     names = {"catalog", "execute", "search", "get_schema", "list_tools", "tags"}
     for namespace, child in children.items():
         # FastMCP 4.1.4 exposes this constructor setting only on the private attribute.

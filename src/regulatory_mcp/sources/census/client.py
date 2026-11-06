@@ -1,14 +1,53 @@
 """Use published catalog paths and variable metadata rather than guessed datasets."""
 
+import json
 import re
 from typing import Any
 from urllib.parse import urlencode, urlsplit
 from uuid import UUID
 
+from regulatory_mcp.config import Settings
+from regulatory_mcp.evidence import EvidenceStore
 from regulatory_mcp.sources.economic import EconomicSource
-from regulatory_mcp.sources.http import SourceError
+from regulatory_mcp.sources.http import PublicHTTP, SourceError
 
 BASE = "https://api.census.gov/data"
+VARIABLE_NAME = r"[A-Za-z][A-Za-z0-9_]{0,99}"
+SUMMARY_FIELDS = (
+    "label",
+    "concept",
+    "predicateType",
+    "group",
+    "required",
+    "limit",
+    "attributes",
+    "attribute_of",
+)
+
+
+def metadata_summary(value: dict[str, Any]) -> dict[str, Any]:
+    """Bound presentation only; full source definitions remain in the retained artifact."""
+    result: dict[str, Any] = {}
+    omitted, truncated = [], []
+    for key in SUMMARY_FIELDS:
+        if key not in value:
+            continue
+        item = value[key]
+        if isinstance(item, str) and len(item) > 256:
+            item = item[:256]
+            truncated.append(key)
+        if not isinstance(item, str | int | float | bool | type(None)):
+            omitted.append(key)
+        elif len(json.dumps({**result, key: item}).encode()) > 800:
+            omitted.append(key)
+        else:
+            result[key] = item
+    omitted.extend(key for key in ("values", "validValues") if key in value)
+    if omitted:
+        result["omitted_fields"] = omitted
+    if truncated:
+        result["truncated_fields"] = truncated
+    return result
 
 
 def dataset_path(value: str) -> str:
@@ -22,17 +61,37 @@ def validate_variables(payload: Any) -> dict[str, Any]:
         raise SourceError("SCHEMA_MISMATCH: expected Census variable metadata")
     if any(not isinstance(value, dict) for value in payload["variables"].values()):
         raise SourceError("SCHEMA_MISMATCH: invalid variable description")
-    return dict(payload["variables"])
+    variables = dict(payload["variables"])
+    for name, definition in payload["variables"].items():
+        if re.fullmatch(VARIABLE_NAME, name) is None:
+            raise SourceError("SCHEMA_MISMATCH: invalid Census variable name")
+        attributes = definition.get("attributes", "")
+        if not isinstance(attributes, str):
+            raise SourceError("SCHEMA_MISMATCH: invalid Census attribute list")
+        if not attributes:
+            continue
+        for attribute in attributes.split(","):
+            attribute = attribute.strip()
+            if re.fullmatch(VARIABLE_NAME, attribute) is None:
+                raise SourceError("SCHEMA_MISMATCH: invalid Census attribute name")
+            # An advertised attribute is selectable even without a top-level definition.
+            # Do not infer its type or flag meaning from the parent measure.
+            variables.setdefault(attribute, {"attribute_of": name})
+    return variables
 
 
 class Census(EconomicSource):
+    def __init__(self, store: EvidenceStore, http: PublicHTTP, settings: Settings | None = None):
+        super().__init__(store, http)
+        self.settings = settings
+
     async def discover(self, query: str, limit: int = 20) -> dict[str, Any]:
         if len(query) > 200 or not 1 <= limit <= 100:
             raise SourceError("INVALID_INPUT: query length at most 200 and limit 1–100")
         payload, artifact = await self.fetch(BASE + ".json", "census.gov")
         if not isinstance(payload, dict) or not isinstance(payload.get("dataset"), list):
             raise SourceError("SCHEMA_MISMATCH: expected Census dataset catalog")
-        matches = []
+        matches: list[dict[str, Any]] = []
         for entry in payload["dataset"]:
             if not isinstance(entry, dict) or not isinstance(entry.get("title"), str):
                 raise SourceError("SCHEMA_MISMATCH: invalid catalog entry")
@@ -67,17 +126,27 @@ class Census(EconomicSource):
         url = f"{BASE}/{dataset_path(dataset)}/variables.json"
         payload, artifact = await self.fetch(url, "census.gov")
         variables = validate_variables(payload)
-        matches = [
-            {"name": key, **value}
-            for key, value in variables.items()
-            if query.casefold() in (key + str(value)).casefold()
-        ]
+        matches: list[dict[str, Any]] = []
+        matched_count = size = 0
+        for key, value in variables.items():
+            if query.casefold() not in (key + str(value)).casefold():
+                continue
+            matched_count += 1
+            item = {"name": key, **metadata_summary(value)}
+            item_size = len(json.dumps(item).encode())
+            if len(matches) < limit and size + item_size <= 16000:
+                matches.append(item)
+                size += item_size
         return {
-            "items": matches[:limit],
-            "matched_count": len(matches),
+            "items": matches,
+            "matched_count": matched_count,
             "dataset": dataset,
             "artifact_id": str(artifact.artifact_id),
-            "retrieval_status": "partial" if len(matches) > limit else "complete",
+            "retrieval_status": "partial" if len(matches) < matched_count else "complete",
+            "warnings": [
+                "Compact definitions; nested values are omitted and long text may be shortened. "
+                "Full metadata is retained in artifact_id. Narrow query for omitted matches."
+            ],
         }
 
     async def fetch_table(
@@ -93,17 +162,21 @@ class Census(EconomicSource):
         payload, metadata = await self.fetch(f"{BASE}/{dataset}/variables.json", "census.gov")
         descriptions = validate_variables(payload)
         for name in [*variables, *predicates]:
-            if (
-                re.fullmatch(r"[A-Za-z][A-Za-z0-9_]{0,99}", name) is None
-                or name not in descriptions
-            ):
+            if re.fullmatch(VARIABLE_NAME, name) is None or name not in descriptions:
                 raise SourceError("INVALID_INPUT: variable absent from dataset metadata")
         if any(key.lower() in {"get", "for", "in", "key", "time"} for key in predicates):
             raise SourceError("INVALID_INPUT: reserved query parameter")
         if any(not value or len(value) > 100 for value in predicates.values()):
             raise SourceError("INVALID_INPUT: predicate values must be 1–100 characters")
         params = {"get": ",".join(variables), "for": geography, **predicates}
-        payload, artifact = await self.fetch(f"{BASE}/{dataset}?{urlencode(params)}", "census.gov")
+        key = (
+            self.settings.census_api_key.get_secret_value()
+            if self.settings and self.settings.census_api_key
+            else None
+        )
+        payload, artifact = await self.fetch(
+            f"{BASE}/{dataset}?{urlencode(params)}", "census.gov", census_key=key
+        )
         rows = table(payload)
         if not set(variables) <= set(rows[0]):
             raise SourceError("SCHEMA_MISMATCH: response omitted requested columns")
@@ -115,17 +188,17 @@ class Census(EconomicSource):
             "row_count": len(rows) - 1,
             "columns": rows[0],
             "query": params,
-            "variable_metadata": {key: descriptions[key] for key in variables},
+            "variable_metadata": {key: metadata_summary(descriptions[key]) for key in variables},
             "warnings": [
                 "Values and suppression/annotation fields are preserved as returned. "
                 "Select relevant flags and size/industry labels explicitly; "
-                "dataset definitions determine firms versus establishments."
+                "dataset definitions determine firms versus establishments.",
+                "Variable metadata is compact; full definitions are retained "
+                "in metadata_artifact_id.",
             ],
         }
 
     def inspect(self, artifact_id: UUID, offset: int = 0, limit: int = 25) -> dict[str, Any]:
-        import json
-
         if offset < 0 or not 1 <= limit <= 100:
             raise SourceError("INVALID_INPUT: nonnegative offset and limit 1–100 required")
         artifact = self.store.artifact(artifact_id)

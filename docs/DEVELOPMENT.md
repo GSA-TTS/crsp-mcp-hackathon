@@ -3,7 +3,7 @@ title: "Local Development"
 description: "Bootstrap, verification, dependency decisions, and environment configuration."
 status: draft
 tier: 2
-last_updated: "2026-10-30"
+last_updated: "2026-11-05"
 related_files: ["../README.md", "IMPLEMENTATION_PIPELINE.md", "SPECIFICATION.md"]
 ---
 
@@ -57,6 +57,12 @@ Use `EvidenceStore(project_root, settings)` from authorized backend code to reta
 
 Storage uses generated filenames, exclusive creation, private permissions, no-follow directory-relative opens, bounded reads, and digest verification. It rejects symlinks and conflicting overwrites, and revalidates records before persistence. This is a single-user local store, not a multiwriter database. An interrupted write may leave an incomplete object, which fails explicit manifest/integrity checks rather than being silently overwritten.
 
+The same `EvidenceStore` validation now supports a byte-storage backend. Local
+storage implements the filesystem behavior above; hosted S3 uses conditional
+creates for both blobs and JSON records. Async tool callers move blocking storage
+operations to worker threads. See [hosted configuration and deployment](DEPLOYMENT.md)
+for shared-workspace authentication, service bindings and persistence gates.
+
 Structured payloads preserve missing keys, nulls, and false values. Citations alone do not establish independent validation or transcription accuracy.
 
 ## Configuration
@@ -70,9 +76,11 @@ Process environment is used directly; `.env` files are not automatically loaded.
 | Environment variable | Default | Format / bounds |
 |---|---|---|
 | `REGULATIONS_GOV_API_KEY` | unset | Secret string; required by future Regulations.gov calls |
+| `CENSUS_API_KEY` | unset | Secret string; required for authenticated Census table queries |
 | `REGULATORY_MCP_ARTIFACT_DIR` | `artifacts` | Relative directory; absolute paths, `..`, and project root rejected |
 | `REGULATORY_MCP_GATEWAY_MODE` | `conventional` | `conventional` or `codemode` |
 | `REGULATORY_MCP_ALLOWED_HOSTS` | `["api.regulations.gov","www.reginfo.gov","api.census.gov","api.bls.gov"]` | JSON array of explicit lowercase DNS names; `[]` disables all destinations |
+| `REGULATORY_MCP_HTTPS_PROXY` | unset | Optional explicit `http://` or `https://` proxy origin; treated as a masked secret because it may contain credentials |
 | `REGULATORY_MCP_SOURCE_REQUEST_INTERVAL_SECONDS` | `4` | Finite seconds between attempts, 0.1–60; local pacing, not a verified source quota |
 | `REGULATORY_MCP_REQUEST_TIMEOUT_SECONDS` | `30` | Finite number, greater than 0, at most 300 |
 | `REGULATORY_MCP_MAX_RETRIES` | `2` | Integer, 0–5 |
@@ -84,6 +92,8 @@ Process environment is used directly; `.env` files are not automatically loaded.
 | `REGULATORY_MCP_MAX_OUTPUT_BYTES` | `100000` | Integer bytes, 1–1000000 |
 
 The initial host list does not imply that attachment hosts have been approved. WP-06 must verify those origins and redirect handling. DNS-name validation is not an SSRF defense by itself: the network adapter must also check resolved addresses. Storage must verify resolved paths and symlink containment before writes; syntactic path validation alone does not establish containment.
+
+Direct source access rejects any fixed target hostname whose local DNS answers include a nonpublic address. In environments where an approved egress proxy performs target DNS and connection enforcement, set `REGULATORY_MCP_HTTPS_PROXY` explicitly. The application never reads generic `HTTP_PROXY`, `HTTPS_PROXY`, `ALL_PROXY`, or `NO_PROXY` variables. Proxy mode retains the fixed target allowlist, HTTPS target certificate and hostname verification, credential-origin restriction, redirect rejection, and request budgets. The proxy is part of the trusted network boundary and must independently prevent CONNECT requests from reaching prohibited destinations; see [ADR-0001](decisions/0001-use-an-explicit-egress-proxy-for-public-sources.md).
 
 ## Dependency selection
 

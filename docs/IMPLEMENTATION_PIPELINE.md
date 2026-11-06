@@ -3,7 +3,7 @@ title: "Regulatory Analysis MCP Implementation Pipeline"
 description: "Durable work ledger, dependencies, agent handoffs, and verification gates."
 status: draft
 tier: 2
-last_updated: "2026-10-30"
+last_updated: "2026-11-05"
 related_files: ["../README.md", "../PROJECT_PLAN.md", "SPECIFICATION.md"]
 ---
 
@@ -33,6 +33,108 @@ The [specification](SPECIFICATION.md) defines acceptance criteria AC-01 through 
 | WP-10 | Research and reference resolution | blocked | WP-03, WP-06 identify relevant references | AC-02, AC-06 |
 | WP-11 | Analysis skills and report bundle | blocked | WP-02, WP-06, WP-07 | AC-08 |
 | WP-12 | Independent review and live demonstration | blocked | WP-11 and applicable source packages pass | AC-09 |
+| WP-13 | Explicit public-source egress proxy | in_review | Approved proxy configuration and restarted live MCP process | Direct/proxy transport tests and authorized live source check |
+| WP-14 | Hosted HTTP and shared bearer authentication | in_review | Local HTTP/stdio checks pass; human review pending | Authenticated HTTP lifecycle and stdio regression tests |
+| WP-15 | Persistent S3 evidence storage | in_review | SDK contract tests pass; live bound-service validation in WP-17 | Immutable writes, integrity, bounded I/O and reopened-store tests |
+| WP-16 | cloud.gov packaging and operator guide | in_review | Locked payload installs locally; CF staging in WP-17 | Locked deployment payload and configuration checks |
+| WP-17 | Live cloud.gov deployment and client acceptance | blocked | WP-14–WP-16 checks pass; operator provisions services/secrets and approves push | Live auth, source requests, persistence across restart, remote client reconnect |
+| WP-18 | Multi-instance quota coordination | blocked | Owner requests more than one process or overlapping deployments | Shared upstream pacing and aggregate request budget |
+
+## WP-14 — Hosted HTTP and shared bearer authentication
+
+**Owner:** OpenCode AI agent; human review pending. **Status:** in_review.
+Approved scope: shared application assembly, HTTP startup, masked shared bearer
+configuration, real ASGI/MCP lifecycle and stdio regression tests.
+See [ADR-0002](decisions/0002-host-regulatory-mcp-on-cloudgov.md).
+Implementation verification is recorded in [the hosted transcript](HOSTED_VERIFICATION.md).
+Gate: authentication rejects absent/wrong credentials; authorized callers execute
+tools and resolve records across app recreation; public startup requires S3.
+
+## WP-15 — Persistent S3 evidence storage
+
+**Owner:** OpenCode AI agent; human review pending. **Status:** in_review.
+Approved scope: byte-store boundary, S3 SDK and binding validation, async caller
+integration, immutable-write and integrity tests. Gate: conditional create/error
+contracts pass and local evidence behavior remains equivalent. Actual bound S3
+durability is separately required in WP-17.
+
+## WP-16 — cloud.gov packaging and operator guide
+
+**Owner:** OpenCode AI agent; human review pending. **Status:** in_review.
+Approved scope: minimal locked wheel payload, manifest, build entry point,
+operator guide and documentation. Gate: build/lint/tests/security checks pass;
+payload contains no local artifacts, secrets or development dependencies.
+
+## WP-17 — Live cloud.gov deployment and client acceptance
+
+**Owner:** project operator. **Status:** in_progress; live upstream and remote
+OpenCode acceptance pending. Target: `sandbox-gsa / gsa.mcp.registry`.
+Gate: approved provisioning/push, actual source calls, authentication from a
+remote OpenCode client, and retrieval of the same saved run across deployment.
+Record UTC timestamps and actual outputs before accepting this package.
+
+Owner preflight received 2026-11-05: target confirmed, no existing service
+instances, private S3 `basic-sandbox` plan available, `app.cloud.gov` shared
+domain available, and Python buildpack v1.9.4 enabled. Its upstream manifest
+lists Python 3.14.7; packaging now pins that patch instead of unavailable 3.14.4.
+Local verification remains on 3.14.4. Owner-supplied logs confirm service creation,
+successful staging, application startup, and HTTP health 200 at 2026-11-05
+20:51:59 UTC. Authenticated initialization and discovery of 25 tools passed.
+The first synthetic calculation failed with `STORAGE_FAILURE: object could not
+be persisted`, initially blocking live S3 persistence and restart acceptance.
+This exact message originates in the S3 write's `BotoCoreError`/`OSError` handler,
+not its AWS `ClientError` handler. Next action: run a credential-safe diagnostic
+inside the bound application task environment to identify the exception class;
+then fix the evidenced cause and repeat calculation/retrieval/restart checks.
+
+Owner diagnostic at 2026-11-05 20:57 UTC confirms the S3 binding exists,
+GovCloud West virtual-hosted addressing is selected, endpoint DNS resolves,
+and TCP fails with `ConnectionRefusedError` (errno 111) before TLS/AWS auth.
+Cloud.gov's published space-egress guidance states staging has public egress
+while new spaces default to closed runtime egress. Next operator check:
+inspect ASGs for this space; if absent and approved, bind
+`public_networks_egress` specifically to `gsa.mcp.registry`, restart the app,
+and repeat persistence and upstream checks. This ASG permits public APIs and
+brokered S3 and affects all running apps in that space. No endpoint or TLS
+changes are justified yet. Reference:
+https://github.com/cloud-gov/cg-site/blob/main/_docs/management/space-egress.md
+
+Owner subsequently confirmed runtime `public_networks_egress` binding and
+successful calculation persistence. Owner-executed live restart check returned:
+
+```text
+PASS: original run retrieved after restart
+Run ID: d3997a54-e48a-4814-a34a-3bec272a4dea
+Break-even: 10 USD/(units)
+```
+
+This establishes authenticated retrieval of the same synthetic run after an
+application restart, using the configured S3 backend. Evidence was supplied by
+the operator in this session; the restart output did not include a timestamp.
+It is not an independently agent-executed cloud check or a redeployment test.
+Owner-executed bounded upstream smoke checks subsequently passed through the
+hosted MCP endpoint (output supplied in this session without a timestamp):
+
+| Source / request | Retained artifact | Reported coverage |
+|---|---|---|
+| BLS latest `CUUR0000SA0` | `00bf6b28-0159-4c40-a8ea-028f6c433612` | unknown |
+| Census discovery `ACS`, limit 1 | `6166ed41-2ddc-424f-a219-e46ab5a81348` | partial |
+| Reginfo OIRA pending report | `162fe354-bcd7-4229-b18a-3a340c37c2d1` | Report fetched; no completeness status returned by smoke script |
+| Regulations.gov `food labeling`, page size 5 | `6703c58f-d3e2-4c93-acdc-ae8e350fb07c` | partial; 5 retrieved |
+
+These establish successful source-tool execution and artifact retention for the
+specific requests, including credentialed Regulations.gov access. They do not
+establish exhaustive searches, original-document interpretation, or independent
+validation of the retained contents. Remaining gates: remote OpenCode registration
+and tool calls, and retrieval after a subsequent code deployment.
+
+## WP-18 — Multi-instance quota coordination
+
+**Owner:** unassigned. **Status:** blocked until the owner requests scale-out.
+Before multiple workers/instances or rolling deployments, replace process-local
+upstream pacing with coordinated quotas. Until then use one instance/process
+and stop/start deployment. Gate: concurrent-instance tests establish the shared
+request budget. No scale-out readiness is claimed.
 
 ## WP-01 — Project foundation
 
@@ -124,6 +226,101 @@ Gate: AC-07 passes with declared tolerances and uncertainty. Exact agency simula
 
 ## WP-09 — Economic-source adapters
 
+### Live integration findings — 2026-11-05
+
+OpenCode AI agent ran live `regulatory-cloud` tool chains in the session beginning
+at 21:25 UTC. These are hosted observations, not fixture tests. Census discovery
+found `2023/cbp`; the following separately tracked items block table acceptance:
+
+- **WP-09-LIVE-01 — Bound variable metadata responses (in_review).**
+  `census_get_variables(dataset="2023/cbp", query="ESTAB", limit=10)` and
+  `limit=1` both returned `BUDGET_EXHAUSTED: output byte limit exceeded`.
+  Querying `Number of establishments`, limit 1, succeeded and returned `ESTAB`.
+  Trigger: approved Census adapter work. Inspect matching nested metadata and
+  provide bounded summaries or pagination while retaining full source metadata;
+  verify the original query succeeds within the gateway byte limit.
+  Implemented compact summaries and explicit omitted/truncated-field markers;
+  full source metadata remains retained. Regression covers gateway modes and
+  table metadata. Hosted metadata discovery and artifact retrieval passed after
+  redeployment at 2026-11-05T21:42:31Z (see live recheck below).
+- **WP-09-LIVE-02 — Resolve advertised attribute variables (in_review).**
+  The successful metadata result advertised `attributes: ESTAB_F`, but
+  `census_fetch_table(dataset="2023/cbp", variables=["ESTAB", "ESTAB_F"],
+  geography="us:1")` returned `INVALID_INPUT: variable absent from dataset metadata`.
+  Trigger: approved Census adapter work. Resolve attribute definitions against
+  authoritative metadata and support validated flag selection. Verify count and
+  flag retrieval together; do not discard suppression information to pass.
+  Implemented validated advertised-attribute lookup, preserving explicit
+  top-level definitions and flag/null values. Synthetic gateway chains verify
+  discovery → fetch → inspect. Source-grounded table acceptance remains blocked
+  by Census authentication.
+- **WP-09-LIVE-03 — Census table authentication (in_review).**
+  Owner updated repository `AGENTS.md` with an explicit compensating-control exception
+  for Census query-parameter authentication over HTTPS. Implemented `CENSUS_API_KEY`
+  secret setting, Census-only outbound query key injection, clean `source_url` provenance
+  retention, redirect rejection, credential error classification, and regression tests.
+  Hosted live verification awaits redeployment.
+- **WP-09-LIVE-04 — Gateway test environment isolation (in_review).**
+  Resolved: created global `tests/conftest.py` autouse fixture isolating tests from
+  ambient `REGULATORY_MCP_*`, `REGULATIONS_GOV_API_KEY`, and `CENSUS_API_KEY` environment
+  settings. Verified `REGULATORY_MCP_GATEWAY_MODE=codemode make check` passes all 150 tests.
+
+Other live chains passed: previously discovered docket `FHWA-2010-0088` → document
+search → `FHWA-2010-0088-0001` retrieval → artifact verification
+(`009d2162-7279-47af-85f1-64237cef39be`); RegInfo `oira_pending` → inspect → artifact
+verification (`fb6f147f-406b-455c-a3fe-5856028b6c46`, 164 snapshot records).
+Synthetic end-of-year USD 1,000 flows at years 1–3, 3% real rate, 2026 dollars,
+produced PV `2828.611354894680922133341630617711468647` in saved run
+`e2107330-214b-4789-b050-8245a1e5010b`, matching a separate JavaScript calculation
+within USD 0.01. Feeding the retrieved PV into annualization returned USD 1,000
+in saved run `db7c01d8-94d7-4aa6-b98b-a10a25e6718b`; retrieval confirmed the result.
+This validates synthetic arithmetic and immediate persistence, not source-grounded
+inputs, evidence-reference propagation, or persistence across service restart.
+
+#### Approved fix verification — OpenCode AI agent
+
+Scoped-edit mode: owner approved compact metadata, advertised flag handling,
+clear missing-key errors, regression tests, and documentation. No dependencies
+were changed by this fix. The existing Census tools use the corrected adapter
+in both conventional and CodeMode gateways; table metadata uses the same compact
+representation as discovery. Raw source definitions and table values are retained.
+
+Verification observed on 2026-11-05, full check at approximately 21:38 UTC:
+
+| Command | Observed result |
+|---|---|
+| `make setup` | PASS: locked environment synchronized; 107 packages audited by uv |
+| Focused pytest before implementation | Expected RED: 9 failed, 34 passed; byte overflow, attribute validation, and missing-key classification reproduced |
+| `uv run --locked --offline pytest tests/test_economic_sources.py tests/test_sources.py -q` | PASS after implementation: 43 passed |
+| `make check` | PASS after correcting formatting and one missing type annotation: Ruff clean, 65 files formatted, mypy clean across 38 source files, 149 tests passed |
+| Security/build stages of `make check` | PASS: Bandit no issues, no secret candidates, wheel/sdist built, pip-audit no known vulnerabilities |
+| `make package-cloudgov` | PASS: `dist/cloudgov` generated with locked hashed requirements |
+
+Regression inputs are synthetic reproductions plus the owner's observed HTTP
+headers; the new server code has not yet been verified on cloud.gov. Execute
+the redeployment and acceptance commands in [DEPLOYMENT.md](DEPLOYMENT.md).
+Human review and hosted rechecks remain required before accepting the fixes.
+
+#### Post-redeployment live recheck — 2026-11-05T21:42Z
+
+After the owner confirmed credential rotation, the OpenCode AI agent executed
+authenticated remote MCP calls against the redeployed service:
+
+| Check | Actual observation | Result |
+|---|---|---|
+| Regulations.gov docket retrieval | `FHWA-2010-0088` returned; artifact `1fdf0813-111f-4724-82ad-8777467518c9`, no warnings | PASS: source access |
+| Census `2023/cbp`, query `ESTAB`, limit 10 | Four compact matches including `ESTAB_F`; complete match coverage | PASS: former byte-limit reproduction |
+| Census metadata artifact retrieval | `d2f2d6eb-d6c0-48bb-b965-ebf83b95b64f`, 543719 retained bytes, SHA-256 `3607074b2883892aec2d09c37a15b0daf84891cffd309b047680db364f4e9905` | PASS: full source retained and verified |
+| Census table with `ESTAB`, `ESTAB_F`, `us:1` | `MISSING_CREDENTIALS: Census requires an API key for this query; Census key authentication is not implemented on this server` | PASS: flag validation and diagnostic; BLOCKED: actual table retrieval |
+| Pre-deployment calculation retrieval | Run `db7c01d8-94d7-4aa6-b98b-a10a25e6718b`, created 21:26:01Z, still returns `payment=1E+3`, unit `USD/payment` | PASS: run survived redeployment |
+
+Owner-supplied CF output reports one ready instance started at 21:41:35Z and
+`/health` returned `{"status":"ok"}`. These observations establish deployed
+metadata/error fixes and this saved run's durability. Test isolation (WP-09-LIVE-04)
+and Census query-parameter authentication (WP-09-LIVE-03) were implemented and verified
+locally with 150 passing tests. Live acceptance requires deploying the updated build to
+cloud.gov and configuring `CENSUS_API_KEY`. Human review remains pending.
+
 SUSB source update (user-supplied page): [2022 SUSB Annual Datasets by Establishment Industry](https://www.census.gov/data/datasets/2022/econ/susb/2022-susb.html), released April 2025, page revised 2025-08-04. Delivery is comma-delimited download files; 2017 NAICS describes establishment industry, with tabulation by enterprise employment/receipts size. Listed files: U.S./states 6-digit NAICS (55.2 MB); detailed employment sizes (6.9 MB, U.S. 6-digit and state sectors); MSA 3-digit NAICS (47.3 MB). The July 22 revision applies specifically to the MSA file. Zero mid-March employment can coexist with paid employment elsewhere in the year. Do not infer receipts columns or dollar units from the general program description. The 6.9 MB file is the initial candidate within the default 25 MB response bound. **Remaining trigger:** owner provides the direct detailed-employment-size download link and Record Layouts documentation (column order, units, size codes, flags). The page fetch failed in this environment, so link targets and layouts remain unverified. Implement the SUSB-specific download/parser after those contracts are available; the generic Census API tools are not SUSB retrieval. AI documentation update verified with local documentation checks.
 
 Documentation follow-up: supplied BLS v2 signatures resolve GET IDs/envelopes/default-window and discovery contracts. Implemented corrected ID handling, list/object Results parsing, latest selection, popular-series and survey tools. Registered historical/multi-series POST support remains a distinct WP-09 subitem; implement bounded JSON queries and registration-key handling using the supplied contract, then verify quotas and live access. Supplied Census API inventory lists CBP but not SUSB; SUSB delivery/data dictionaries still require documentation. See [source contract notes](SOURCES.md).
@@ -147,6 +344,14 @@ Proposed scope: `src/regulatory_mcp/sources/research/`, matching tests and refer
 Resolve studies supporting reformulation probabilities and transferability from other labeling policies. Preserve bibliographic identity, accessible versions, retrieval provenance, passages, and limits of access. Choose a search provider only when its contract, access terms, and authorization are established.
 
 Gate: evidence references resolve to retained accessible material; inaccessible full text is explicitly reported. A citation match or abstract must not be represented as full-text review.
+
+## WP-13 — Explicit public-source egress proxy
+
+**Owner:** OpenCode AI agent (implementation), project owner (review pending). **Status:** in_review.
+
+Implemented an opt-in masked proxy setting and explicit HTTPX2 CONNECT routing while retaining direct-mode public-address DNS checks, fixed target allowlists, target TLS verification, credential-origin restrictions, redirect rejection, and bounded requests. Generic proxy environment variables remain disabled. The security assumptions and alternatives are recorded in [ADR-0001](decisions/0001-use-an-explicit-egress-proxy-for-public-sources.md).
+
+Gate: focused direct/proxy transport and configuration tests pass. Final live acceptance remains blocked until an approved proxy is configured in a restarted MCP process and an authorized source request succeeds. Regulations.gov additionally requires its source credential. Do not mark this package done based only on mocked transport tests.
 
 ## WP-11 — Skills and report bundle
 

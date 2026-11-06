@@ -1,5 +1,6 @@
 """Register calculations and persist every successful result with its input lineage."""
 
+import asyncio
 import hashlib
 from datetime import UTC, datetime
 from pathlib import Path
@@ -89,7 +90,7 @@ def create_analysis_server(store: EvidenceStore) -> FastMCP[Any]:
                     ),
                 ),
             )
-            store.save_run(run)
+            await asyncio.to_thread(store.save_run, run)
             return run
         except (AnalysisError, StoreError) as exc:
             raise ToolError(str(exc)) from exc

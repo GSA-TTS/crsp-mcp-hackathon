@@ -1,5 +1,6 @@
 """Fetch fixed public reports and inspect retained snapshots with stable locators."""
 
+import asyncio
 import hashlib
 from typing import Any, Literal
 from uuid import UUID
@@ -110,7 +111,8 @@ class Reginfo:
         root = parse(raw, report)
         for index, node in enumerate(root):
             fields(node, report, index)
-        artifact = self.store.retain(
+        artifact = await asyncio.to_thread(
+            self.store.retain,
             raw,
             source_system="reginfo.gov",
             source_url=url,

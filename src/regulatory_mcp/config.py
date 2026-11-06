@@ -2,6 +2,7 @@
 
 from pathlib import Path
 from typing import Literal
+from urllib.parse import urlsplit
 
 from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -21,6 +22,7 @@ class Settings(BaseSettings):
     regulations_gov_api_key: SecretStr | None = Field(
         default=None, validation_alias="REGULATIONS_GOV_API_KEY"
     )
+    census_api_key: SecretStr | None = Field(default=None, validation_alias="CENSUS_API_KEY")
     artifact_dir: Path = Path("artifacts")
     gateway_mode: Literal["conventional", "codemode"] = "conventional"
     allowed_hosts: tuple[str, ...] = (
@@ -29,6 +31,7 @@ class Settings(BaseSettings):
         "api.census.gov",
         "api.bls.gov",
     )
+    https_proxy: SecretStr | None = None
     source_request_interval_seconds: float = Field(default=4, ge=0.1, le=60, allow_inf_nan=False)
     request_timeout_seconds: float = Field(default=30, gt=0, le=300, allow_inf_nan=False)
     max_retries: int = Field(default=2, ge=0, le=5)
@@ -63,4 +66,26 @@ class Settings(BaseSettings):
                 or any(re.fullmatch(pattern, label) is None for label in labels)
             ):
                 raise ValueError("allowed_hosts must contain explicit lowercase DNS hostnames")
+        return value
+
+    @field_validator("https_proxy")
+    @classmethod
+    def explicit_https_proxy(cls, value: SecretStr | None) -> SecretStr | None:
+        """Accept one explicit proxy endpoint without trusting ambient proxy variables."""
+        if value is None:
+            return None
+        parsed = urlsplit(value.get_secret_value())
+        if (
+            parsed.scheme not in {"http", "https"}
+            or parsed.hostname is None
+            or parsed.path not in {"", "/"}
+            or parsed.query
+            or parsed.fragment
+        ):
+            raise ValueError("https_proxy must be an explicit HTTP(S) proxy origin")
+        try:
+            if parsed.port is not None and not 1 <= parsed.port <= 65535:
+                raise ValueError("https_proxy port is outside the valid range")
+        except ValueError as exc:
+            raise ValueError("https_proxy must contain a valid port") from exc
         return value

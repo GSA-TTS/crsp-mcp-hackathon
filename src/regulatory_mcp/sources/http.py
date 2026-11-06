@@ -8,7 +8,7 @@ import ssl
 import time
 from datetime import UTC, datetime
 from email.utils import parsedate_to_datetime
-from urllib.parse import urlsplit
+from urllib.parse import SplitResult, urlsplit
 
 import httpx2 as httpx
 
@@ -20,6 +20,22 @@ ORIGINS = {"api.regulations.gov", "www.reginfo.gov", "api.census.gov", "api.bls.
 
 class SourceError(ValueError):
     """Safe source error; never carries response bodies or credentials."""
+
+
+def census_key_required(response: httpx.Response) -> bool:
+    """Recognize the observed Census error without following or exposing its redirect."""
+    if response.status_code != 302 or response.headers.get("X-DataWebAPI-KeyError") != "1":
+        return False
+    try:
+        origin = response.request.url
+    except RuntimeError:
+        return False
+    return (
+        origin.scheme == "https"
+        and origin.host == "api.census.gov"
+        and response.headers.get("Location")
+        in {"/data/missing_key.html", "https://api.census.gov/data/missing_key.html"}
+    )
 
 
 def retry_delay(value: str | None, attempt: int) -> float:
@@ -52,7 +68,7 @@ class PublicHTTP:
                 await asyncio.sleep(wait)
             self.last_request = time.monotonic()
 
-    async def get(self, url: str, *, key: str | None = None) -> bytes:
+    def _validate_destination(self, url: str) -> SplitResult:
         parsed = urlsplit(url)
         if (
             parsed.scheme != "https"
@@ -63,17 +79,40 @@ class PublicHTTP:
             or parsed.password
         ):
             raise SourceError("DESTINATION_REJECTED: source origin is not allowed")
-        if key is not None and parsed.hostname != "api.regulations.gov":
-            raise SourceError("DESTINATION_REJECTED: credentials cannot cross origins")
+        return parsed
+
+    async def _validate_public_dns(self, hostname: str | None) -> None:
+        if self.settings.https_proxy is not None:
+            return
         try:
             async with asyncio.timeout(self.settings.request_timeout_seconds):
                 addresses = await asyncio.get_running_loop().getaddrinfo(
-                    parsed.hostname, 443, type=socket.SOCK_STREAM
+                    hostname, 443, type=socket.SOCK_STREAM
                 )
-            if not addresses or any(not ipaddress.ip_address(a[4][0]).is_global for a in addresses):
+            if not addresses or any(
+                not ipaddress.ip_address(address[4][0]).is_global for address in addresses
+            ):
                 raise SourceError("DESTINATION_REJECTED: source resolves to a nonpublic address")
         except (OSError, TimeoutError) as exc:
             raise SourceError("SOURCE_UNAVAILABLE: DNS lookup failed") from exc
+
+    async def get(
+        self, url: str, *, key: str | None = None, census_key: str | None = None
+    ) -> bytes:
+        parsed = self._validate_destination(url)
+        if key is not None and parsed.hostname != "api.regulations.gov":
+            raise SourceError("DESTINATION_REJECTED: credentials cannot cross origins")
+        if census_key is not None:
+            if parsed.hostname != "api.census.gov":
+                raise SourceError("DESTINATION_REJECTED: credentials cannot cross origins")
+            if "key=" in parsed.query:
+                raise SourceError("INVALID_INPUT: API key must not be passed in the URL")
+            separator = "&" if parsed.query else "?"
+            request_url = f"{url}{separator}key={census_key}"
+        else:
+            request_url = url
+        await self._validate_public_dns(parsed.hostname)
+        proxy = self.settings.https_proxy
         context = ssl.create_default_context()
         context.minimum_version = ssl.TLSVersion.TLSv1_2
         headers = {
@@ -84,31 +123,48 @@ class PublicHTTP:
             headers["X-Api-Key"] = key
         async with httpx.AsyncClient(
             verify=context,
+            proxy=proxy.get_secret_value() if proxy is not None else None,
             trust_env=False,
             follow_redirects=False,
             timeout=self.settings.request_timeout_seconds,
         ) as client:
-            for attempt in range(self.settings.max_retries + 1):
-                await self._pace()
-                try:
-                    async with asyncio.timeout(self.settings.request_timeout_seconds):
-                        async with client.stream("GET", url, headers=headers) as response:
-                            data = await self._response(response, attempt)
-                    if isinstance(data, bytes):
-                        return data
-                    delay = data
-                except httpx.TransportError, TimeoutError:
-                    if attempt == self.settings.max_retries:
-                        raise SourceError(
-                            "SOURCE_UNAVAILABLE: request failed or timed out"
-                        ) from None
-                    delay = float(2**attempt)
-                logger.warning("source_retry host=%s attempt=%s", parsed.hostname, attempt + 1)
-                await asyncio.sleep(delay)
+            return await self._request(client, request_url, headers, census_key is not None)
+
+    async def _request(
+        self,
+        client: httpx.AsyncClient,
+        request_url: str,
+        headers: dict[str, str],
+        had_census_key: bool,
+    ) -> bytes:
+        hostname = urlsplit(request_url).hostname
+        for attempt in range(self.settings.max_retries + 1):
+            await self._pace()
+            try:
+                async with asyncio.timeout(self.settings.request_timeout_seconds):
+                    async with client.stream("GET", request_url, headers=headers) as response:
+                        data = await self._response(
+                            response, attempt, had_census_key=had_census_key
+                        )
+                if isinstance(data, bytes):
+                    return data
+                delay = data
+            except httpx.TransportError, TimeoutError:
+                if attempt == self.settings.max_retries:
+                    raise SourceError("SOURCE_UNAVAILABLE: request failed or timed out") from None
+                delay = float(2**attempt)
+            logger.warning("source_retry host=%s attempt=%s", hostname, attempt + 1)
+            await asyncio.sleep(delay)
         raise SourceError("SOURCE_UNAVAILABLE: retry budget exhausted")
 
-    async def _response(self, response: httpx.Response, attempt: int) -> bytes | float:
+    async def _response(
+        self, response: httpx.Response, attempt: int, *, had_census_key: bool = False
+    ) -> bytes | float:
         status = response.status_code
+        if census_key_required(response):
+            if had_census_key:
+                raise SourceError("AUTHENTICATION_FAILED: Census rejected the supplied API key")
+            raise SourceError("MISSING_CREDENTIALS: Census requires an API key for this query")
         if status in (429, 502, 503, 504):
             if attempt == self.settings.max_retries:
                 code = "RATE_LIMITED" if status == 429 else "SOURCE_UNAVAILABLE"

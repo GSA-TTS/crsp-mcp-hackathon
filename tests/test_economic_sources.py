@@ -6,6 +6,7 @@ from uuid import UUID
 
 import pytest
 from fastmcp import Client
+from pydantic import SecretStr
 
 from regulatory_mcp.analysis.server import create_analysis_server
 from regulatory_mcp.config import Settings
@@ -22,9 +23,11 @@ class HTTP:
     def __init__(self, *payloads):
         self.payloads = list(payloads)
         self.urls = []
+        self.census_keys = []
 
-    async def get(self, url):
+    async def get(self, url, *, census_key=None):
         self.urls.append(url)
+        self.census_keys.append(census_key)
         return json.dumps(self.payloads.pop(0)).encode()
 
 
@@ -97,6 +100,111 @@ def test_census_retained_table_flags_and_queries(tmp_path):
         assert page["items"][0] == {"EMP": None, "EMP_F": "D", "us": "1"}
         assert page["next_offset"] == 1
         assert adapter.inspect(UUID(result["artifact_id"]), offset=1)["items"][0]["EMP"] == "100"
+
+    asyncio.run(run())
+
+
+def test_census_table_with_key_preserves_clean_provenance(tmp_path):
+    async def run():
+        http = HTTP(METADATA, [["EMP", "us"], ["100", "1"]])
+        settings = Settings(census_api_key=SecretStr("fixture-key"))
+        adapter = Census(EvidenceStore(tmp_path), http, settings)
+        result = await adapter.fetch_table("2022/cbp", ["EMP"], "us:1", {})
+        assert http.census_keys[-1] == "fixture-key"
+        assert "key=" not in http.urls[-1]
+        assert "key" not in result["query"]
+        artifact = EvidenceStore(tmp_path).artifact(UUID(result["artifact_id"]))
+        assert "key=" not in str(artifact.source_url)
+
+    asyncio.run(run())
+
+
+@pytest.mark.parametrize("mode", ["conventional", "codemode"])
+def test_census_large_metadata_and_advertised_flags_through_gateway(tmp_path, mode):
+    """Synthetic reproduction of hosted metadata overflow and missing attribute lookup."""
+
+    async def run():
+        metadata = {
+            "variables": {
+                "NAICS2022": {
+                    "label": "Industry of establishments",
+                    "values": {"item": {str(i): "Establishment industry" for i in range(6000)}},
+                },
+                "ESTAB": {
+                    "label": "Number of establishments",
+                    "attributes": "ESTAB_F",
+                    "predicateType": "int",
+                },
+            }
+        }
+        rows = [["ESTAB", "ESTAB_F", "NAICS2022", "us"], [None, "D", "00", "1"]]
+        store = EvidenceStore(tmp_path)
+        http = HTTP(metadata, metadata, rows)
+        gateway = await create_gateway(
+            {"census": create_census_server(Census(store, http))}, Settings(gateway_mode=mode)
+        )
+        async with Client(gateway) as client:
+
+            async def call(name, args):
+                if mode == "codemode":
+                    code = f"return await call_tool({name!r}, {args!r})"
+                    return (await client.call_tool("execute", {"code": code})).data
+                return (await client.call_tool(name, args)).data
+
+            found = await call(
+                "census_get_variables", {"dataset": "2023/cbp", "query": "ESTAB", "limit": 10}
+            )
+            assert {item["name"] for item in found["items"]} >= {"ESTAB", "ESTAB_F"}
+            assert "values" in found["items"][0]["omitted_fields"]
+            source = store.artifact(UUID(found["artifact_id"]))
+            assert json.loads(store.read_bytes(source.sha256)) == metadata
+            fetched = await call(
+                "census_fetch_table",
+                {"dataset": "2023/cbp", "variables": ["ESTAB", "ESTAB_F", "NAICS2022"]},
+            )
+            assert fetched["variable_metadata"]["ESTAB_F"]["attribute_of"] == "ESTAB"
+            assert "values" in fetched["variable_metadata"]["NAICS2022"]["omitted_fields"]
+            page = await call("census_inspect_table", {"artifact_id": fetched["artifact_id"]})
+            assert page["items"] == [{"ESTAB": None, "ESTAB_F": "D", "NAICS2022": "00", "us": "1"}]
+            assert len(http.urls) == 3
+
+    asyncio.run(run())
+
+
+@pytest.mark.parametrize("attributes", [123, ["ESTAB_F"], "../bad", "ESTAB_F,,OTHER"])
+def test_census_malformed_attributes_fail_before_table_request(tmp_path, attributes):
+    async def run():
+        http = HTTP({"variables": {"ESTAB": {"attributes": attributes}}})
+        adapter = Census(EvidenceStore(tmp_path), http)
+        with pytest.raises(SourceError, match="SCHEMA_MISMATCH"):
+            await adapter.fetch_table("2023/cbp", ["ESTAB"], "us:1", {})
+        assert len(http.urls) == 1
+
+    asyncio.run(run())
+
+
+def test_census_metadata_summary_budget_and_raw_retention(tmp_path):
+    async def run():
+        metadata = {
+            "variables": {
+                f"VAR{i}": {"label": "x" * 10000, "concept": "y" * 10000} for i in range(100)
+            }
+        }
+        store = EvidenceStore(tmp_path)
+        gateway = await create_gateway(
+            {"census": create_census_server(Census(store, HTTP(metadata)))}, Settings()
+        )
+        async with Client(gateway) as client:
+            result = (
+                await client.call_tool(
+                    "census_get_variables", {"dataset": "2023/cbp", "limit": 100}
+                )
+            ).data
+        assert 0 < len(result["items"]) < result["matched_count"] == 100
+        assert result["retrieval_status"] == "partial"
+        assert result["items"][0]["truncated_fields"] == ["label", "concept"]
+        artifact = store.artifact(UUID(result["artifact_id"]))
+        assert json.loads(store.read_bytes(artifact.sha256)) == metadata
 
     asyncio.run(run())
 

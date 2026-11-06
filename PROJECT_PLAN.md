@@ -3,7 +3,7 @@ title: "Regulatory Analysis MCP Project Plan"
 description: "Scope, source readiness, milestones, and acceptance criteria for the regulatory analysis suite."
 status: draft
 tier: 1
-last_updated: "2026-10-30"
+last_updated: "2026-11-05"
 related_files: ["README.md", "docs/SPECIFICATION.md", "docs/IMPLEMENTATION_PIPELINE.md"]
 ---
 
@@ -20,6 +20,13 @@ The initial product is a local, read-only research and analysis suite. Proposed 
 ### Project identity and implementation baseline
 
 Project: Regulatory Analysis MCP Suite (`regulatory-mcp`). Initial stack: Python 3.14, FastMCP 4.1.4, pydantic-settings 2.16.2, Hatchling packaging, and uv locking. Storage is planned as project-local artifacts; no database is selected. Hosting is local stdio. CI configuration is not part of the foundation authorization.
+
+Hosted extension approved 2026-11-05: one cloud.gov application in
+`sandbox-gsa / gsa.mcp.registry`, authenticated with a shared bearer token and
+using one shared S3 evidence workspace. Local stdio remains supported. See
+[deployment instructions](docs/DEPLOYMENT.md) and
+[ADR-0002](docs/decisions/0002-host-regulatory-mcp-on-cloudgov.md).
+WP-14–WP-18 track implementation, live acceptance, and the scale-out prerequisite.
 
 Compliance/data scope: the owner authorized a local public-source prototype on 2026-10-30. FIPS impact level and ATO relevance remain undetermined. Public-source inputs can contain personal information. See [development instructions](docs/DEVELOPMENT.md) for the implemented foundation and the [technical specification](docs/SPECIFICATION.md) for the architecture.
 

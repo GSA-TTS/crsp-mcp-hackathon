@@ -15,6 +15,9 @@ dependencies = [
   "pydantic==2.14.2",
   "httpx2==2.16.0",
   "defusedxml==0.7.1",
+  "boto3==1.43.125",
+  "uvicorn==0.54.0",
+  "starlette==1.10.0",
 ]
 
 [dependency-groups]
@@ -26,6 +29,7 @@ dev = [
   "pip-audit==2.10.1",
   "pytest==9.2.0",
   "ruff==0.17.3",
+  "PyYAML==6.0.3",
 ]
 
 [tool.hatch.build.targets.wheel]
@@ -53,6 +57,10 @@ plugins = ["pydantic.mypy"]
 
 [[tool.mypy.overrides]]
 module = ["defusedxml.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["boto3.*", "botocore.*"]
 ignore_missing_imports = true
 
 [tool.bandit]

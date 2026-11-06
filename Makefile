@@ -1,7 +1,7 @@
 export UV_CACHE_DIR := $(CURDIR)/.cache/uv
 export UV_PYTHON_DOWNLOADS := never
 
-.PHONY: setup check check-offline lint test security build audit
+.PHONY: setup check check-offline lint test security build audit package-cloudgov
 
 setup:
 	uv sync --locked
@@ -24,6 +24,9 @@ security:
 
 build:
 	uv build --no-build-isolation --offline
+
+package-cloudgov: build
+	uv run --locked --offline python scripts/package_cloudgov.py
 
 audit:
 	uv export --locked --offline --all-groups --no-emit-project --output-file .venv/audit-requirements.txt > /dev/null

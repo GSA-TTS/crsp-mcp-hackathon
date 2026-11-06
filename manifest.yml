@@ -1,0 +1,25 @@
+---
+applications:
+  - name: regulatory-mcp
+    path: dist/cloudgov
+    memory: 512M
+    disk_quota: 1G
+    instances: 1
+    buildpacks:
+      - python_buildpack
+    command: python -m regulatory_mcp.http_server
+    health-check-type: http
+    health-check-http-endpoint: /health
+    timeout: 180
+    routes:
+      - route: ((mcp-route))
+    services:
+      - regulatory-mcp-evidence
+    env:
+      REGULATORY_MCP_BIND_HOST: 0.0.0.0
+      REGULATORY_MCP_PUBLIC_URL: https://((mcp-route))
+      REGULATORY_MCP_STORAGE_BACKEND: s3
+      REGULATORY_MCP_S3_SERVICE_NAME: regulatory-mcp-evidence
+      REGULATORY_MCP_GATEWAY_MODE: conventional
+      AWS_EC2_METADATA_DISABLED: "true"
+      PYTHONUNBUFFERED: "1"
