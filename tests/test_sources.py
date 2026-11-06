@@ -12,7 +12,7 @@ from pydantic import SecretStr
 from regulatory_mcp.config import Settings
 from regulatory_mcp.evidence import EvidenceStore
 from regulatory_mcp.gateway import create_gateway
-from regulatory_mcp.sources.http import PublicHTTP, SourceError, retry_delay
+from regulatory_mcp.sources.http import DOWNLOAD_USER_AGENT, PublicHTTP, SourceError, retry_delay
 from regulatory_mcp.sources.reginfo.client import Reginfo, parse
 from regulatory_mcp.sources.reginfo.server import create_reginfo_server
 from regulatory_mcp.sources.regulations.client import Regulations
@@ -226,6 +226,49 @@ def test_transport_rejects_private_dns_before_http(monkeypatch):
         monkeypatch.setattr(asyncio.get_running_loop(), "getaddrinfo", private_address)
         with pytest.raises(SourceError, match="nonpublic address"):
             await PublicHTTP(Settings()).get("https://www.reginfo.gov/public/do/PRAXML")
+
+    asyncio.run(run())
+
+
+def test_download_user_agent_is_host_scoped_and_credentials_stay_on_api(monkeypatch):
+    async def run():
+        requests = []
+
+        def respond(request):
+            requests.append(request)
+            return httpx.Response(200, content=b"fixture")
+
+        real_client = httpx.AsyncClient
+
+        def client(**kwargs):
+            assert kwargs["follow_redirects"] is False
+            return real_client(**kwargs, transport=httpx.MockTransport(respond))
+
+        async def public_address(*args, **kwargs):
+            return [(2, 1, 6, "", ("8.8.8.8", 443))]
+
+        monkeypatch.setattr(asyncio.get_running_loop(), "getaddrinfo", public_address)
+        monkeypatch.setattr("regulatory_mcp.sources.http.httpx.AsyncClient", client)
+        adapter = PublicHTTP(Settings(source_request_interval_seconds=0.1))
+        await adapter.get("https://api.regulations.gov/v4/documents", key="fixture-value")
+        download = "https://downloads.regulations.gov/FDA-TEST-0001/content.pdf"
+        assert await adapter.get(download) == b"fixture"
+        await adapter.get("https://www.federalregister.gov/api/v1/documents.json")
+        for credential in ({"key": "fixture-value"}, {"census_key": "fixture-value"}):
+            with pytest.raises(SourceError, match="credentials cannot cross origins"):
+                await adapter.get(download, **credential)
+        assert len(requests) == 3
+        assert requests[0].headers["X-Api-Key"] == "fixture-value"
+        assert requests[0].headers["User-Agent"] == "regulatory-mcp/0.1"
+        assert requests[1].headers["User-Agent"] == DOWNLOAD_USER_AGENT
+        assert "regulatory-mcp/0.1" in DOWNLOAD_USER_AGENT
+        assert DOWNLOAD_USER_AGENT.startswith("Mozilla/5.0")
+        assert requests[2].headers["User-Agent"] == "regulatory-mcp/0.1"
+        for request in requests[1:]:
+            assert "X-Api-Key" not in request.headers
+            assert "Authorization" not in request.headers
+            assert "Cookie" not in request.headers
+            assert "fixture-value" not in str(request.url)
 
     asyncio.run(run())
 
