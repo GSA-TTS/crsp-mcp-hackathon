@@ -11,6 +11,53 @@ related_files: ["../README.md", "../PROJECT_PLAN.md", "SPECIFICATION.md"]
 
 ## Work ledger and execution rules
 
+### Approved phased economic-review roadmap — 2026-11-06
+
+Owner approved the sequence and immediate Phase 1 implementation, starting with
+PDF and CSV. Each phase is a separately tracked deliverable with an acceptance
+demonstration and owner assistance requests. AI implementation mode: scoped edit.
+
+| Phase | Existing package | Status / trigger | Deliverable and owner assistance |
+|---|---|---|---|
+| 1 | WP-06 | in_review; local implementation verified, FDA review pending | PDF/CSV ingestion, page/table inspection, cited selections, immutable review; owner confirms FDA Table 11 extraction. |
+| 2 | WP-04, WP-05, WP-06 | blocked on Phase 1 demonstration and source contracts | Rule/docket/version and attachment collection; owner supplies inaccessible original links and confirms anchor version. |
+| 3 | WP-07, WP-08 | blocked on Phase 1 evidence and Phase 2 supporting models | Claim/assumption structure and model reconstruction; owner supplies underlying workbooks and resolves ambiguous timing. |
+| 4 | WP-08 | blocked on Phase 3 model | Multi-parameter sensitivity and threshold solving; owner selects defensible ranges and alternatives. |
+| 5 | WP-09, WP-10 | blocked on Phase 3 input inventory | Historical economic data and research corroboration; owner assists with keys, dictionaries, vintages and accessible papers. |
+| 6 | WP-11, WP-12 | blocked on Phases 3–5 | Reproducible reviewer report and second-agency rule demonstration; owner reviews usability and selects second rule. |
+
+Phase 1 boundaries: text-native PDF/UTF-8 CSV first; OCR and Excel are sequenced
+WP-06 extensions triggered by owner-provided scanned examples or workbooks. PDF
+tables are candidate layouts requiring review, not automatically verified cells.
+See [document tools](DOCUMENT_PIPELINE.md) and [ADR-0003](decisions/0003-ingest-pdf-csv-evidence.md).
+
+Phase 1 local demonstration on 2026-11-06, OpenCode AI agent:
+the real conventional MCP gateway ingested the owner's 123-page FDA PDF and found
+Table 11. Artifact `79dca0ba-98b4-4b96-afbc-fdc3ba3d8451` retains SHA-256
+`726791d90275fe25556c7691091ab82ae9f22ed25d01728bb762a01dbe98a9e3`.
+Evidence `2bcd27b0-3b76-40e5-a9f9-22f1bf4e232b` selects `$4,543` at zero-based page
+71, span [4358,4364), labeled Table 11 / PV (7%) Total / Mean, millions of 2014 USD.
+It remains unreviewed pending owner confirmation. These IDs are in the ignored
+local `artifacts/phase1-demo` store, not the hosted S3 workspace.
+
+Verification: `make check` at approximately 16:43 UTC passed lint, formatting,
+strict typing (43 source files), 160 tests, secret scan, build, and dependency audit
+(no known vulnerabilities). Parser subprocess scan annotations are restricted to
+the fixed installed-worker command with stdin data, no shell, and a hard deadline;
+the ADR records the design. Synthetic PDF/CSV tests exercise real parsers and
+CSV → reviewed evidence → calculation → retrieval in both gateway modes.
+Hosted deployment and human-reviewed FDA calculation acceptance remain pending.
+
+Owner checkpoint update at 2026-11-06T16:50:50Z: the owner confirmed the Table 11
+selection above. The AI recorded that attestation as new reviewed evidence
+`a64088b2-1df5-467f-9fb1-2514560f9426`, preserving the unreviewed original.
+Through the real local MCP gateway, annualization of the derived 4,543,000,000 USD
+input at 7% over end-year payments 1–20 returned 428,827,061.6516106 USD/payment,
+which rounds to FDA's 429 million. Saved run
+`75a5b2d4-93ea-45f1-b3b1-f70a47bfa3df` was retrieved and its reviewed evidence
+reference confirmed. This passes the single-cell reviewed-evidence demonstration;
+the other five Table 11 inputs and hosted deployment remain pending.
+
 This file is the initial repository-local change-tracking record. Each WP entry is a distinct tracked item, including dependency-blocked work. Maintain status, owner, blocking dependency, and acceptance evidence here until external issues are created; then add issue links without losing the task identifiers.
 
 Statuses: `ready`, `blocked`, `in_progress`, `in_review`, `done`. Ready means ready for scoping and assignment, not authorization to install dependencies or change infrastructure. WP-01 through WP-03 were implemented by the OpenCode AI agent under the owner's approval; other implementation owners are unassigned.

@@ -9,6 +9,8 @@ from fastmcp.exceptions import ToolError
 
 from regulatory_mcp.contracts import Artifact, CalculationRun, Evidence
 from regulatory_mcp.evidence.store import EvidenceStore, StoreError
+from regulatory_mcp.sources.documents.pipeline import Documents
+from regulatory_mcp.sources.documents.server import register_document_tools
 
 
 def create_evidence_server(store: EvidenceStore) -> FastMCP[Any]:
@@ -38,4 +40,5 @@ def create_evidence_server(store: EvidenceStore) -> FastMCP[Any]:
         except StoreError as exc:
             raise ToolError(str(exc)) from exc
 
+    register_document_tools(server, Documents(store))
     return server
