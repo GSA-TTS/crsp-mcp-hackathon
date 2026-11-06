@@ -1,5 +1,6 @@
 """Versioned public evidence and tool-result contracts."""
 
+from regulatory_mcp.contracts.economic_model import EconomicModel, ModelDefinition
 from regulatory_mcp.contracts.models import (
     Artifact,
     CalculationInput,
@@ -17,6 +18,8 @@ __all__ = [
     "CalculationInput",
     "CalculationRun",
     "Evidence",
+    "EconomicModel",
+    "ModelDefinition",
     "Locator",
     "SearchPage",
     "ToolErrorDetail",
