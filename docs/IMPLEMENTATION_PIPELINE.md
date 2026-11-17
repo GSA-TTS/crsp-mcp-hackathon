@@ -3,7 +3,7 @@ title: "Regulatory Analysis MCP Implementation Pipeline"
 description: "Durable work ledger, dependencies, agent handoffs, and verification gates."
 status: draft
 tier: 2
-last_updated: "2026-11-06"
+last_updated: "2026-11-17"
 related_files: ["../README.md", "../PROJECT_PLAN.md", "SPECIFICATION.md"]
 ---
 
@@ -511,6 +511,7 @@ The [specification](SPECIFICATION.md) defines acceptance criteria AC-01 through 
 | WP-16 | cloud.gov packaging and operator guide | in_review | Locked payload installs locally; CF staging in WP-17 | Locked deployment payload and configuration checks |
 | WP-17 | Live cloud.gov deployment and client acceptance | blocked | WP-14–WP-16 checks pass; operator provisions services/secrets and approves push | Live auth, source requests, persistence across restart, remote client reconnect |
 | WP-18 | Multi-instance quota coordination | blocked | Owner requests more than one process or overlapping deployments | Shared upstream pacing and aggregate request budget |
+| WP-19 | Task evaluation suite and recorded runs | in_review | Specifications and one self-scored run exist; human adjudication of cases, keys, and scores is pending | Four task rubrics with critical-failure gates, plus runs reported PASS, FAIL, or BLOCKED against a named system; no capability claim without human adjudication |
 
 ## WP-14 — Hosted HTTP and shared bearer authentication
 
@@ -844,6 +845,26 @@ Proposed scope: integration/evaluation tests, verification transcripts, and revi
 Use a review session separate from the implementation session. Review source authenticity, gateway registration, error paths, download boundaries, evidence integrity, mathematical conventions, and completeness claims. Run the live FDA source-to-report workflow and capture actual outputs. Compare CodeMode and conventional mode on the same task using correctness, tool/request counts, elapsed time, and returned data volume; record variability rather than claim a performance improvement from one run.
 
 Gate: AC-09 passes and the human reviewer accepts the economic interpretation. Credentials or unavailable sources yield `BLOCKED`, not a mocked live pass. File reproducible defects in the tracker, fix them, and rerun affected checks. Revisit downstream tasks when their blocking dependency completes.
+
+## WP-19 — Task evaluation suite and recorded runs
+
+**Owner:** OpenCode AI agent (specifications and first run); project owner (adjudication pending). **Status:** in_review.
+
+Scope: `evals/`, plus the root README entry and this ledger entry for discoverability. No change to gateway, adapter, analysis, or deployment code.
+
+The suite defines four distinct tasks with separate users and failure modes: identify rules relevant to a querant, prepare an evidence-grounded local comment draft for a commenter, serve and use a commenting UI through MCP Apps, and independently review a commenter's analysis. Each specification fixes case inputs, procedure, a 0–4 rubric, critical-failure gates, and honest `PASS` / `FAIL` / `BLOCKED` reporting. See [the evaluation index](../evals/README.md).
+
+`evals/run/` records `RUN-2026-11-17-A` against the deployed `crsp-regulations` HTTP endpoint. Read it with its stated limits:
+
+- **No human adjudicator reviewed any case, key, or score.** Every number is provisional agent self-assessment and must not be cited as a measured capability.
+- The case definitions, answer keys, scored deliverables, and scoring were produced by the same agent. EVAL-04 in particular seeded the defects it then detected, so its detection rate is an upper bound, not a measurement.
+- Recorded results: EVAL-01 `FAIL` (coverage/recall below the per-dimension floor), EVAL-02 `PASS`, EVAL-03 `BLOCKED` (no `ui://` resource or MCP Apps tool is served by the gateway; the standalone prototype is not mounted), EVAL-04 `PASS`.
+- The run's exact server source revision was **not** determined, and its first tool-catalog enumeration proved unstable on re-enumeration. Both issues are documented in [`evals/run/CORRECTIONS.md`](../evals/run/CORRECTIONS.md); no score was changed in response.
+- CodeMode was not exercised anywhere in the run, so the results support no CodeMode conclusion.
+
+This package does not implement an executable harness, authorize comment submission, or imply that the standalone MCP Apps prototype is integrated with the Python gateway.
+
+Gate: a qualified human reviews the task boundaries, the cases and answer keys, and the recorded scores, and records agreement or disagreement per dimension. Independently authored cases and keys, and a reproducible runner pinned to a named server revision, remain future scoped work and must be in place before any run is presented as a capability benchmark.
 
 ## Agent roles and handoff
 

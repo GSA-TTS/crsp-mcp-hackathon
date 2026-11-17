@@ -3,8 +3,8 @@ title: "Regulatory Analysis MCP Suite"
 description: "Evidence-linked regulatory research and reproducible economic analysis."
 status: draft
 tier: 1
-last_updated: "2026-11-05"
-related_files: ["PROJECT_PLAN.md", "docs/SPECIFICATION.md", "docs/IMPLEMENTATION_PIPELINE.md"]
+last_updated: "2026-11-17"
+related_files: ["PROJECT_PLAN.md", "docs/SPECIFICATION.md", "docs/IMPLEMENTATION_PIPELINE.md", "evals/README.md"]
 ---
 
 # Regulatory Analysis MCP Suite
@@ -19,6 +19,7 @@ A planned modular MCP suite for researching federal regulations, retrieving supp
 - [Analysis tools](docs/ANALYSIS.md): deterministic calculations, input formats, and run provenance.
 - [Source adapters](docs/SOURCES.md): Regulations.gov, Reginfo, and Census/BLS prototypes with explicit live-verification limits.
 - [Hosted deployment](docs/DEPLOYMENT.md): shared-token HTTP, persistent S3 storage, cloud.gov packaging, and operator acceptance steps.
+- [Evaluation suite](evals/README.md): task specifications for rule discovery, comment drafting, MCP Apps, and independent review, plus recorded runs and their limitations.
 
 ## Current status
 
