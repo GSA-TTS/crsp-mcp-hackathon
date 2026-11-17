@@ -14,3 +14,6 @@ dist/
 !.env.example
 artifacts/
 .DS_Store
+
+# Evaluation deliverables are scored run output, not build artifacts.
+!evals/run/artifacts/
