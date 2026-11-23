@@ -3,7 +3,7 @@ title: "Regulatory Analysis MCP Implementation Pipeline"
 description: "Durable work ledger, dependencies, agent handoffs, and verification gates."
 status: draft
 tier: 2
-last_updated: "2026-11-17"
+last_updated: "2026-11-23"
 related_files: ["../README.md", "../PROJECT_PLAN.md", "SPECIFICATION.md"]
 ---
 
@@ -19,9 +19,9 @@ demonstration and owner assistance requests. AI implementation mode: scoped edit
 
 | Phase | Existing package | Status / trigger | Deliverable and owner assistance |
 |---|---|---|---|
-| 1 | WP-06 | in_review; local implementation verified, FDA review pending | PDF/CSV ingestion, page/table inspection, cited selections, immutable review; owner confirms FDA Table 11 extraction. |
-| 2 | WP-04, WP-05, WP-06 | in_progress; Regulations.gov slice implemented, Federal Register contract blocked | Rule/docket/version and attachment collection; owner supplies inaccessible original links and confirms anchor version. |
-| 3 | WP-07, WP-08 | in_progress; local model foundation verified, final-RIA reconstruction pending | Claim/assumption structure and model reconstruction; owner supplies underlying workbooks and resolves ambiguous timing. |
+| 1 | WP-06 | in_review; PDF/CSV and one reviewed Table 11 cell demonstrated | Complete reviewed FDA input inventory; OCR/Excel remain conditional extensions. |
+| 2 | WP-04, WP-05, WP-06 | in_progress; hosted search/download/evidence demonstrated | P2-03 version-chain resolution and collection completeness remain; source access is not currently a blanket blocker. |
+| 3 | WP-07, WP-08 | in_progress; model tools hosted, candidate mean-model agreement local | Reproducible definitions, reviewed input/schedule decisions, cost-component reconstruction, and full-size hosted acceptance remain. |
 | 4 | WP-08 | blocked on Phase 3 model | Multi-parameter sensitivity and threshold solving; owner selects defensible ranges and alternatives. |
 | 5 | WP-09, WP-10 | blocked on Phase 3 input inventory | Historical economic data and research corroboration; owner assists with keys, dictionaries, vintages and accessible papers. |
 | 6 | WP-11, WP-12 | blocked on Phases 3–5 | Reproducible reviewer report and second-agency rule demonstration; owner reviews usability and selects second rule. |
@@ -30,6 +30,88 @@ Phase 1 boundaries: text-native PDF/UTF-8 CSV first; OCR and Excel are sequenced
 WP-06 extensions triggered by owner-provided scanned examples or workbooks. PDF
 tables are candidate layouts requiring review, not automatically verified cells.
 See [document tools](DOCUMENT_PIPELINE.md) and [ADR-0003](decisions/0003-ingest-pdf-csv-evidence.md).
+
+### Increment 1 reconciliation — 2026-11-16
+
+Owner approved read-only reconciliation and a single-file ledger update. AI
+assistance: OpenCode, GPT 6.1 Sol Latest Guardrails Defaultv2; mode: scoped edit.
+This checkpoint supersedes older source/deployment blockers only where the live
+observations below establish progress. It does not close human review or FDA
+economic acceptance. Local HEAD is `e56d789` (merge of PR #11); no remote fetch or
+branch-freshness claim was made. Untracked `paseo.json` is preserved.
+
+Actual hosted MCP observations on 2026-11-16:
+
+| Check | Observed result | Acceptance boundary |
+|---|---|---|
+| Remote OpenCode connection | `regulatory-cloud` tools became available after the effective team config changed; no restart | Remote client connection/tool-call gate passes |
+| `documents_get_run`, `d3997a54-e48a-4814-a34a-3bec272a4dea` | `break_even="10"`, `USD/(units)`; created 2026-11-05T20:59:09.120335Z | Saved synthetic run remains readable; not FDA validation |
+| `catalog` | 44 mounted backend tools, including all seven model tools and PDF/CSV evidence/review tools | Model capability is hosted; registration is not full workflow acceptance |
+| `documents_get_artifact`, final RIA `fbde4c1e-d04a-4f53-8e61-2b538c508d83` | 1,113,520 bytes, SHA-256 `23a24da52c520b8cc5b876b3eca031dafaf68af18afa6f9f49f43fd2c0d6ef05`; origin retrieved | Retained artifact integrity/read-back passes; no new download |
+| Retained RTI labeling/reformulation and Abaluck artifacts | `af586d40-17ac-44a2-8ed3-21f187530bd6`, `640b2614-5100-4310-9762-8708b4e79d05`, `57debdcb-c4ca-40f2-8ba5-270f5895409d` all returned with verified bytes | Reference recovery is unblocked; parameter extraction/review remains |
+| `census_inspect_table`, `412bb015-580c-4d13-aa9e-3b57be98bf85` | All 47 retained rows for 2014–2060; no continuation; 2015 population 321,368,864 and 2034 population 368,245,560 | Stored table coverage passes; FDA's chosen vintage remains unconfirmed |
+| `documents_read_page`, final RIA indices 71, 78, 81 | 123-page document; Table 11 values, s1 weighting/distribution/thresholds, and timing/simulation passage readable | Source passages available; index 71 returned only its first 4000 characters, with continuation |
+| Existing schedule and Abaluck evidence | `3bd4d563-64a8-438f-878b-c1c9674ea6e6` and `fac007ef-2998-49df-a387-76df24c4be43` returned `review_state=unreviewed` | No human approval inferred |
+
+Source interpretation checkpoint: printed page 79 reports the weighted expression
+`0.38*0.92 + 0.25*0.06`, rounded to 0.365, and describes s1 as uniform from 0 to
+0.365. Printed page 82 describes 10,000 @Risk iterations and additional component
+draws. Their dependence/draw relationship is not established. Candidate deterministic
+mean-model agreement must not be called a simulation reconstruction.
+
+Repository inspection confirms model registration in `analysis/model_server.py`,
+mounting in `application.py`, and a 97-formula, full-manifest/hash regression in
+`tests/test_model_run_views.py` for both gateway modes. The existing scenario tool
+only varies discount rates, not arbitrary model parameters. No research/reporting
+module or general model threshold tool is present in the inspected source tree.
+Earlier FDA candidate definitions/runs are documented as ignored local artifacts;
+they were not queried as hosted IDs, and this session has not established a hosted
+FDA model inventory. No model creation, evaluation, review attestation, or other
+hosted write was performed during this read-only increment.
+
+#### Separately tracked completion increments
+
+Existing WP/P2/P3 identifiers remain authoritative; these increments group their
+remaining work without declaring every optional adapter a prerequisite.
+
+| ID | Status / owner | Scope and dependency | Acceptance / unblocking trigger |
+|---|---|---|---|
+| FIN-01 | in_review / OpenCode; owner review pending | This reconciliation and ledger-only change | Documentation verification below; owner accepts the next scope |
+| FIN-02a | ready for scoping / OpenCode proposed | P3-03/P3-04 reproducible FDA mean-model definitions and input inventory | Versioned definitions, source IDs/hashes/locators, explicit unapproved assumptions, independent regression expectations |
+| FIN-02b | blocked on FIN-02a and owner input review / owner + implementer | P3-03 review of numeric selections, 2014 Census vintage, and 95/5 compliance schedule | Explicit owner decisions; reviewed evidence created only with attestation, no silent promotion of assumptions |
+| FIN-02c | blocked on FIN-02a and input inventory / implementer unassigned | P3-04 RTI cost-component reconstruction and missing/proprietary/stochastic input inventory | Reconstruct only adequately specified components; record blocked inputs and conditions for lawful recovery |
+| FIN-02d | blocked on FIN-02a/02b and hosted-write approval / implementer + operator | P3-05/P3-06 hosted full-size create/readiness/evaluate/retrieve/reconcile and paged hash validation | Actual hosted results and full manifest read-back; deployment only if evidenced necessary and separately approved |
+| FIN-03a | blocked on agreed FIN-02 model / implementer unassigned | Phase 4 bounded multi-parameter scenarios | Independent arithmetic, bounded workload, immutable baseline and scenario provenance; owner-approved ranges |
+| FIN-03b | blocked on agreed FIN-02 model / implementer unassigned | Phase 4 supported-model threshold solver | Units/bounds/tolerances, explicit unsupported/nonconvergent cases, both gateway modes and hosted acceptance |
+| FIN-04a | blocked on FIN-02 input inventory / implementer unassigned | Phase 5 exact historical economic sources and price conversions, WP-09 | Verified source contracts/vintages/units; implement only required missing adapters |
+| FIN-04b | blocked on FIN-02 input inventory and approved access / implementer unassigned | Phase 5 research corroboration, WP-10 | Retained bibliographic/full-text evidence with access and causal-transfer limitations |
+| FIN-05a | blocked on reviewed FIN-02 outputs / implementer unassigned | Phase 6 reproducible reviewer report, WP-11; optional FIN-03/04 sections only when available | Evidence/run-resolving findings, explicit assumptions/coverage/gaps and AI/human-review disclosure |
+| FIN-05b | blocked on FIN-05a and separate reviewer assignment / owner + reviewer | WP-12 independent review and actual hosted FDA source-to-report demonstration | Recorded live outputs; economic interpretation accepted by human, no self-approval |
+| FIN-05c | blocked on FIN-05a and owner selection / owner + implementer | Second-agency demonstration | Selected rule/source contract and live reproducible report, with incomplete coverage labeled |
+
+Proposed next bounded scope (FIN-02a), requiring a new approval: add
+`scripts/build_fda_mean_models.py`, `tests/test_fda_mean_models.py`,
+`tests/data/fda_2016_mean_inputs.json`; update `docs/ANALYSIS.md` and this ledger.
+Use the existing declarative model contract/engine unchanged, without new public
+tools or dependencies. The builder should validate the explicit source/transcription
+inventory, produce deterministic 3%/7% definitions, and retain the candidate vintage
+and schedule as assumptions until FIN-02b. Tests should independently reproduce
+the weighted effect, six Table 11 annualizations, mean benefits and analytic linear
+thresholds, plus malformed/missing inputs. These tests establish published-input
+reproduction, not underlying RTI cost reconstruction. No report or general sensitivity
+implementation is authorized by FIN-01.
+
+Verification transcript (2026-11-16T21:19:35.420767Z; rerun after final text update):
+`git diff --check`: PASS (no output). Python standard-library document validation:
+PASS for required frontmatter, all `related_files`, local Markdown link targets,
+and all 12 separately tracked FIN items; no bearer configuration/token reference
+was copied into this ledger. Actual MCP read-back results are recorded above.
+Local `.venv` and `INDEX.yaml` are absent. No dependency
+installation is authorized in FIN-01. Runtime tests, lint/build/security scans and
+current dependency advisory checks are not established by this documentation-only
+increment; code and configuration were not changed in it. A full runtime baseline
+is required before FIN-02a code acceptance; ask for locked setup authorization if
+the required environment remains unavailable.
 
 Phase 1 local demonstration on 2026-11-06, OpenCode AI agent:
 the real conventional MCP gateway ingested the owner's 123-page FDA PDF and found
@@ -509,7 +591,7 @@ The [specification](SPECIFICATION.md) defines acceptance criteria AC-01 through 
 | WP-14 | Hosted HTTP and shared bearer authentication | in_review | Local HTTP/stdio checks pass; human review pending | Authenticated HTTP lifecycle and stdio regression tests |
 | WP-15 | Persistent S3 evidence storage | in_review | SDK contract tests pass; live bound-service validation in WP-17 | Immutable writes, integrity, bounded I/O and reopened-store tests |
 | WP-16 | cloud.gov packaging and operator guide | in_review | Locked payload installs locally; CF staging in WP-17 | Locked deployment payload and configuration checks |
-| WP-17 | Live cloud.gov deployment and client acceptance | blocked | WP-14–WP-16 checks pass; operator provisions services/secrets and approves push | Live auth, source requests, persistence across restart, remote client reconnect |
+| WP-17 | Live cloud.gov deployment and client acceptance | in_review | Remote client/read-back passes 2026-11-16; earlier restart and redeployment observations retained below; human review pending | Live auth, source requests, persistence across restart, remote client reconnect |
 | WP-18 | Multi-instance quota coordination | blocked | Owner requests more than one process or overlapping deployments | Shared upstream pacing and aggregate request budget |
 | WP-19 | Task evaluation suite and recorded runs | in_review | Specifications and one self-scored run exist; human adjudication of cases, keys, and scores is pending | Four task rubrics with critical-failure gates, plus runs reported PASS, FAIL, or BLOCKED against a named system; no capability claim without human adjudication |
 
@@ -540,8 +622,9 @@ payload contains no local artifacts, secrets or development dependencies.
 
 ## WP-17 — Live cloud.gov deployment and client acceptance
 
-**Owner:** project operator. **Status:** in_progress; live upstream and remote
-OpenCode acceptance pending. Target: `sandbox-gsa / gsa.mcp.registry`.
+**Owner:** project operator. **Status:** in_review; remote OpenCode tool-call
+acceptance passes 2026-11-16, with historical upstream/restart/redeployment evidence
+below. Human acceptance remains pending. Target: `sandbox-gsa / gsa.mcp.registry`.
 Gate: approved provisioning/push, actual source calls, authentication from a
 remote OpenCode client, and retrieval of the same saved run across deployment.
 Record UTC timestamps and actual outputs before accepting this package.
@@ -598,8 +681,10 @@ hosted MCP endpoint (output supplied in this session without a timestamp):
 These establish successful source-tool execution and artifact retention for the
 specific requests, including credentialed Regulations.gov access. They do not
 establish exhaustive searches, original-document interpretation, or independent
-validation of the retained contents. Remaining gates: remote OpenCode registration
-and tool calls, and retrieval after a subsequent code deployment.
+validation of the retained contents. Historical remaining gates were remote OpenCode
+registration/tool calls and retrieval after a subsequent code deployment. Redeployment
+read-back is recorded in WP-09's 2026-11-05 live recheck; remote OpenCode read-back
+passes in FIN-01 on 2026-11-16. No new restart/redeployment was performed in FIN-01.
 
 ## WP-18 — Multi-instance quota coordination
 
